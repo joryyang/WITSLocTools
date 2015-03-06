@@ -1,0 +1,4 @@
+AutoLayout Score	Generates MatchBox Scoring Info	autoLayoutScore	TRUE
+Check Nib Files	Check all .nib files in _NewLoc	checkNibFiles	FALSE
+Localize RTL Nib Files	Localize all .nib files to RTL in _NewLoc	localizeRTLAllNewLocNibs	TRUE
+Localize RTL New and Updated Nib Files	Localize New and Updated .nib files to RTL in _NewLoc	localizeRTLNewUpdatedNewLocNibs	TRUE

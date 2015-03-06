@@ -1,0 +1,465 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AALocCommand
+##     File Name:	AAWinflverifier
+##        Author:	Stanley Au-Yeung
+##          Date:	Thursday, December 20, 2007
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	ZY			Zhang Yan
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	01/22/08	01:00	SA		Reformat
+##	12/20/07	17:00	ZY		Original version
+##*****************************************************************************
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use Getopt::Long;
+use File::Basename;
+
+
+#---------------------------------------------------------------------------------------------
+#  Global varaibles
+#---------------------------------------------------------------------------------------------
+
+my $gDebug = 0;
+my $gCompFileUSFilePath = "";
+my $gCompFileLocFilePath = "";
+my $gFlverifyReportFilePath = "";
+my $h;
+my $v;
+my $getVersion;
+
+$version = "1.0";
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+GetOptions(
+    'us=s'                      => \$gCompFileUSFilePath,
+    'loc=s'                     => \$gCompFileLocFilePath,
+    'out=s'                     => \$gFlverifyReportFilePath,
+    'h'                         => \$h,
+    'v'                         => \$v,
+    'debug'                     => \$gDebug,
+    'getVersion'                => \$getVersion,
+)
+or die "$!";
+
+
+#---------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------
+
+@USVector = &GetFileData($gCompFileUSFilePath);
+@LocVector = &GetFileData($gCompFileLocFilePath);
+%gWholeDataUS = ();
+%gWholeDataLoc = ();
+
+
+#---------------------------------------------------------------------------------------------
+#	Get US compare report file's hash data
+#---------------------------------------------------------------------------------------------
+
+while ($usCell = pop(@USVector))
+{
+	print STDERR "[Debug:AAWinflverifier] usCell = $usCell\n" if ($gDebug);
+
+	ParseFileData($usCell, "US");
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Get Loc compare report file's hash data
+#---------------------------------------------------------------------------------------------
+
+while ($locCell = pop(@LocVector))
+{
+	ParseFileData($locCell, "Loc");
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Check different and generate report.
+#---------------------------------------------------------------------------------------------
+
+
+open(Data, "> $gFlverifyReportFilePath") or die "Cannot open the file: $gFlverifyReportFilePath\n";
+
+$fileNameComp = "";
+
+foreach $usCompareKey (sort keys %gWholeDataUS)
+{
+	$usCompareValue = $gWholeDataUS{$usCompareKey};
+	$usCompareKey =~ /(.*?)\n(.*)/sgi;
+	$fileName = $1;
+	$fileResID = $2;
+
+	if (!exists $gWholeDataLoc{$usCompareKey})
+	{
+		print Data "###Warning: ";
+		print Data &GetResultMessage("a3");
+		print Data "\n";
+
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\n";
+		next;
+	}
+
+	$locCompareValue = $gWholeDataLoc{$usCompareKey};
+
+	if ($locCompareValue eq $usCompareValue)
+	{
+		next;
+	}
+	
+	if ($fileName ne $fileNameComp)
+	{
+		print Data "##########################################################################################################\n";
+		print Data "### PROGRESS: Verifying file: $fileName";
+		print Data "##########################################################################################################\n";
+	}
+
+	$fileNameComp = $fileName;
+
+	if ($usCompareValue =~/Equivalent/i)
+	{
+		print Data "+++Warning: ";
+		print Data &GetResultMessage("a1");
+		print Data "\n";
+
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}
+	
+	if ($locCompareValue =~/Equivalent/i)
+	{
+		print Data "+++Warnings: ";
+		print Data &GetResultMessage("b1");
+		print Data "\n";
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}
+	
+	if ($usCompareValue =~/Obsolete/i)
+	{
+		print Data "***Warnings: ";
+		print Data &GetResultMessage("a2");
+		print Data "\n";
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}
+	
+	if ($locCompareValue =~/Obsolete/i)
+	{
+		print Data "***Warnings: ";
+		print Data &GetResultMessage("a3");
+		print Data "\n";
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}
+	
+	if ($usCompareValue =~/Excessive/i)
+	{
+		print Data "***Warnings: ";
+		print Data &GetResultMessage("a4");
+		print Data "\n";
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}
+	
+	if ($locCompareValue =~/Excessive/i)
+	{
+		print Data "***Warnings: ";
+		print Data &GetResultMessage("b2");
+		print Data "\n";
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+		next;
+	}	
+	
+	if ($DetailOpt ne "")
+	{
+		print Data "$fileResID\n";
+		print Data "\t\t\tUS:\n";
+		print Data "\t\t\t\t$usCompareValue\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Check extra loc comparing data.
+#---------------------------------------------------------------------------------------------
+
+foreach $Loccompare_Key (sort keys %gWholeDataLoc)
+{
+	if (!exists $gWholeDataUS{$Loccompare_Key})
+	{
+		print Data "\n\n";
+		print Data "##########################################################################################################\n";
+		print Data "### PROGRESS: Checking extra comparing data\n";
+		print Data "##########################################################################################################\n";
+		print Data "***Warning: ";
+		print Data &GetResultMessage("c1");
+		print Data "\n";
+		print Data "$Loccompare_Key\n";
+		print Data "\t\t\tLoc:\n";
+		print Data "\t\t\t\t$locCompareValue\n";
+		print Data "\n";
+	}
+}
+
+close(Data);
+`open -e $gFlverifyReportFilePath`;
+
+
+
+#=============================================================================================
+#	ParseFileData
+#
+#	Parse file data and call ProcessHashData to generate hashmap.
+#=============================================================================================
+
+sub ParseFileData
+{
+	my ($inData, $inLang) = @_;
+
+	my $resType;
+	my $resContent;
+	my $filePath;
+	my $fileCompareData;
+	
+	$inData =~s/\t\'/\t\"\"/sgi;
+	$inData =~/Old file\t\:\t(.*?[\n\r]).*?[\n\r](\t.*)/sgi;
+	$filePath = $1;
+	$fileCompareData = $2;
+	$filePath =~ s/\\/\//sgi;
+	$fileName = basename($filePath);
+
+	$fileCompareData .= "\t\"\"The End\"\n";
+	$fileCompareData =~ s/^(\t\")\"/\1/;
+
+
+	#---------------------------------------------------------------------------------------------
+	#	Get Resource Type and comparing contents.
+	#---------------------------------------------------------------------------------------------
+	
+	while ($fileCompareData =~ /\"(.*?)\'(.*?)\t\"/sgi)
+	{
+		$resType = $1;
+		$resContent = $2;
+
+		print STDERR "[Debug:ParseFileData] resType = $resType, resContent = $resContent\n" if ($gDebug);
+
+		&ProcessHashData($fileName, $resType, $resContent, $inLang);
+	} 
+}
+
+
+#=============================================================================================
+#	ProcessHashData
+#=============================================================================================
+
+sub ProcessHashData
+{
+	my ($inFileName, $inResType, $inResContent, $inLang) = @_;
+
+	my $key = $inFileName . "\n\t" . $inResType . "\n\t\t";
+	my $keyString;
+	my $keyRes;
+	my @resourceData = split/\t\t\[/,$inResContent;
+	my @stringData = "";
+	my $resID;
+	my $resCompareData;
+	my $stringID;
+	my $stingCompareData;
+
+
+	foreach $resData(@resourceData)
+	{
+		if ($resData !~ /^[\d\w]/)
+		{
+			next;
+		}
+		
+		$resData =~ /(.*?)\]\t?[\n\r]?(.*)/i;
+		$resID = "[" . $1 ."]";
+		$resCompareData = $2;
+		$keyRes = $key . $resID;
+		
+		if ($resData =~ /\t\t\t\<.*?\>/)
+		{
+			$resData =~ s/\d*\][\n\r]//sgi;
+			@stringData = split/\t\t\t\</,$resData;
+
+			foreach $strData(@stringData)
+			{
+				next if $strData !~/^\d/;
+				$strData  =~ /(.*?)\>\t(.*)/sgi;
+				$stringID = "<" . $1 . ">";		
+				$stingCompareData = $2;
+				next if $stringID =~ /^<>$/;
+				$keyString = $keyRes . "\n\t\t\t\t" . $stringID;
+				
+				if ($inLang eq "US")
+				{
+					$gWholeDataUS{$keyString} = $stingCompareData;
+				}
+				else
+				{
+					$gWholeDataLoc{$keyString} = $stingCompareData;
+				}
+			}
+		}
+		else
+		{
+			if ($inLang eq "US")
+			{
+				$gWholeDataUS{$keyRes} = $resCompareData;
+			}
+			else
+			{
+				$gWholeDataLoc{$keyRes} = $resCompareData;
+			}
+		}
+	}
+}
+
+
+#=============================================================================================
+#	GetFileData
+#=============================================================================================
+
+sub GetFileData
+{
+	my $inFilePath = @_[0];
+
+	my @outFileData = ();
+	my $fileData;
+	
+	open(FILEDATA, "$inFilePath") or die "Unable to open the file: $inFilePath!\n";
+	
+	$temp = $/;
+	undef $/;
+	
+	$fileData = <FILEDATA>;
+	
+	$/ = $temp;
+
+	close FILEDATA;
+
+
+	$fileData = $fileData . "\n--";
+	$fileData =~ s/\t\t\"(.*?)\"/\t\t\[\1\]/sgi;;
+
+
+	# Split compare data by file.
+
+	while ($fileData =~/(--*.*?Old file\t.*?--*[\n\r].*?)--/sgi)
+	{
+		push(@outFileData, $1); 
+	}
+
+
+	return @outFileData;
+}
+
+
+#=============================================================================================
+#	GetResultMessage
+#=============================================================================================
+
+sub GetResultMessage
+{
+	my ($inResultID) = @_;
+
+	my %resultMessage = (
+		"a1" 	=> "US did NOT change but Loc changed. Did you fix a localization bug?\n",
+		"a2" 	=> "US removed the resource, but loc didn't. Why did you keep the resource?\n",
+		"a3" 	=> "US had the resource, but loc removed it. Why did you remove the reousrce?\n",
+		"a4" 	=> "US added the resource, but loc didn't. Why didn't you add the resource?\n",
+		"b1" 	=> "US changed but Loc did NOT change. Is the change US specific one?\n",
+		"c1" 	=> "US didn't have the resource, but loc has the resource's comparing data. Please check why.\n",
+	);
+	
+	return $resultMessage{"$inResultID"};
+}
+
+
+#=============================================================================================
+#	Usage
+#=============================================================================================
+
+sub Usage
+{
+	print "Usage:\n\n";
+	print "FlverifyWin -usreport <US report> -locreport <Loc report> -output <output path>\n\n";
+	print "Options:\n";
+	print "\t-detail\t\tShow all the diff in US & Loc reports.\n"; 
+	print "\t-help or -h\tShow help.\n\n"; 
+	
+	exit(1);
+}
+
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

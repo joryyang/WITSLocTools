@@ -1,0 +1,350 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAProcessNibScore
+##        Author:	Stanley Au-Yeung
+##          Date:	Friday, May 9, 2008
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	10/18/09	14:00	SA		version 1.0.2
+##	10/18/09	14:00	SA		Support Conductor Loc Env
+##	08/07/08	18:00	SA		version 1.0.1
+##	08/07/08	18:00	SA		Support not compressed .plist
+##	05/09/08	12:00	SA		Original version
+##
+##*****************************************************************************
+
+BEGIN
+{
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+};
+
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Compare;
+
+use Foundation;
+use Evolution;
+use EBS;
+use EBS::Loc::Scoring::ScorePlist;
+use EBS::Loc::Scoring::ScoringParameters;
+use EBS::Loc::AutoLayoutAdjuster::ScoreFlidentifier;
+
+my $scoresRef    = EBS::Loc::Scoring::ScoringParameters::ScoreMapping;
+my $rootAttr     = EBS::Loc::Scoring::ScoringParameters::RootAttr;
+
+use AALocEnvUtilities;
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+
+# set version string
+$version = "1.0.2";
+
+$gDebug = 0;
+$gAppleGlotEnvironment = 0;
+$gConductorEnvironment = 0;
+$gInPath = "";
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&UsageLine();
+	exit (2);
+}
+
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-getVersion")
+	{
+		print $version;
+		exit (2);
+	}
+
+	if ($item eq "-debug")
+	{
+		$gDebug = 1;
+	}
+	
+	if ($item eq "-ag")
+	{
+		$gAppleGlotEnvironment = 1;
+	}
+	
+	if ($item eq "-conductor")
+	{
+		$gConductorEnvironment = 1;
+	}
+	
+	$gInPath = $item;
+	$gInPath =~ s|/?$|/|;	# has to end with one slash
+}
+
+
+if (-d $gInPath)
+{
+	my $appleGlotEnvPath;
+	my $alaScoreLogFilePath;
+	my $checkNibFilesFormttedLogFile;
+	my $appleGlotEnvironmentName;
+	my $autolayoutFolderPath;
+
+	
+	if ($gAppleGlotEnvironment)
+	{
+		$appleGlotEnvPath = $gInPath;
+		$appleGlotEnvironmentName = AALocFileUtilities::GetDirectoryBaseName($appleGlotEnvPath);
+		$alaScoreLogFilePath = $appleGlotEnvPath . "_Logs/alaScoredLog.txt";
+		$checkNibFilesFormttedLogFile = $appleGlotEnvPath . "_Logs/" . "$appleGlotEnvironmentName" . "_checkUpdatedNibFilesFormttedLog.txt";
+		$autolayoutFolderPath = $appleGlotEnvPath . "_Logs/AutoLayout_Log/";
+	}
+	elsif ($gConductorEnvironment)
+	{
+		$appleGlotEnvPath = AALocEnvUtilities::GetAppleGlotEnvPathFromLocEnv($gInPath);
+		$appleGlotEnvironmentName = AALocFileUtilities::GetDirectoryBaseName($appleGlotEnvPath);
+		$alaScoreLogFilePath = $appleGlotEnvPath . "_Logs/alaScoredLog.txt";
+		
+		$checkNibFilesFormttedLogFile = $appleGlotEnvPath . "_Logs/" . "$appleGlotEnvironmentName" . "_checkUpdatedNibFilesFormttedLog.txt";
+		$autolayoutFolderPath = $appleGlotEnvPath . "_EnvLog/autolayoutadjuster_log/";
+	}
+	else
+	{
+		$appleGlotEnvPath = AALocEnvUtilities::GetAppleGlotEnvPathFromLocEnv($gInPath);
+		$appleGlotEnvironmentName = AALocFileUtilities::GetDirectoryBaseName($appleGlotEnvPath);
+		$alaScoreLogFilePath = $appleGlotEnvPath . "_Logs/alaScoredLog.txt";
+
+		$checkNibFilesFormttedLogFile = $appleGlotEnvPath . "_Logs/" . "$appleGlotEnvironmentName" . "_checkUpdatedNibFilesFormttedLog.txt";
+		$autolayoutFolderPath = $gInPath . "_LKCXInfo/autolayoutadjuster_log/";
+	}
+	
+	
+	#--Debug----------------------------------------------------------------------------------
+	print STDERR "[Debug:AAProcessNibScore] alaScoreLogFilePath: \"$alaScoreLogFilePath\"\n" if ($gDebug);
+	print STDERR "[Debug:AAProcessNibScore] checkNibFilesFormttedLogFile: \"$checkNibFilesFormttedLogFile\"\n" if ($gDebug);
+	print STDERR "[Debug:AAProcessNibScore] autolayoutFolderPath: \"$autolayoutFolderPath\"\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+	
+
+	PrintLog("\n");
+	PrintLog("#========================================================================================\n");
+	PrintLog("# Create ALA Score Log from Loc Env\n");
+	PrintLog("#========================================================================================\n");
+	
+	open alaScoreLogFile, "> $alaScoreLogFilePath" or die "Failed to open $alaScoreLogFilePath\n";
+	
+	
+	opendir(directory, $autolayoutFolderPath);
+	@searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+	
+	foreach $file (@searchResult)
+	{
+		$alaScoreFilePath = $autolayoutFolderPath . $file . "/Score/Score_" . $file . ".plist.gz";
+
+		$tempFilePath = "/tmp/$file" . ".plist";
+
+		if (-e $alaScoreFilePath)
+		{
+			$tempCompressFilePath = "/tmp/$file" . ".plist.gz";
+			system "cp '$alaScoreFilePath' '$tempCompressFilePath'";
+			system "gzip -d '$tempCompressFilePath'";
+		}
+		else
+		{
+			$alaScoreFilePath = $autolayoutFolderPath . $file . "/Score/Score_" . $file . ".plist";
+			system "cp '$alaScoreFilePath' '$tempFilePath'";
+		}
+		
+		
+		if (-e $tempFilePath)
+		{
+			print alaScoreLogFile "Component\t$file\t-\t-\t-\n";
+
+			PrintLog("Creating $file\n");
+			
+			
+			# my $sf = EBS::Loc::AutoLayoutAdjuster::ScoreFlidentifier->new();
+			# my $log = $sf->printLog(fromScoreFile  => $tempFilePath);
+			# print "$log\n\n";
+			
+			
+			my $sp = EBS::Loc::Scoring::ScorePlist->new();
+			my $plist = $sp->read(scoreFile => $tempFilePath);
+			
+			
+			# get prefix and component
+			# my $prefix = $sp->getValueOfRootAttribute('attribute' => 'PathPrefix');
+			# my $component = $sp->getValueOfRootAttribute('attribute' => 'Component');
+			
+			my @nibs = $sp->getNibs();
+			
+			foreach my $score (sort values %$scoresRef)
+			{
+				foreach my $nib (@nibs)
+				{
+					# get views
+					my @views = $sp->getViewByScore('score' => $score, 'nibPath' => $nib);
+					# my @views = $sp->getViewByAttributes('nibPath' => $nib, 'attributes' => $attr);
+
+					foreach my $view (@views)
+					{
+						my $metrics = $sp->getLowLevelMetricsForView('nibPath' => $nib, 'viewOID' => $view);
+						my $oid = $sp->getClickableOID('nibPath' => $nib, 'viewOID' => $view);
+
+						$nib =~ m/\/(.*)\/(.*)$/;
+						$currentNibFile = $2;
+
+						print alaScoreLogFile "File\t$currentNibFile\t$nib\t$oid\t$score\n";
+					}
+				}
+			}
+				
+			`rm $tempFilePath` if (-e $tempFilePath);
+		}
+	}
+	
+	close alaScoreLogFile;
+}
+else
+{
+	print "ERROR: specified path '$gInPath' doesn't exist.\n";
+	exit(1);
+}
+
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#	Function Definitions
+#=============================================================================================
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+sub PerlValue
+{
+	my $object = ( @_ );
+	return $object->description()->UTF8String();
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+sub PrintLog
+{
+	my ($inMessage) = @_;
+	
+	print STDERR "$inMessage";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	UsageLine
+#---------------------------------------------------------------------------------------------
+
+sub UsageLine
+{
+	print "Usage: AAProcessNibScore <Loc Environment>\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AAProcessNibScore [Version $version]\n";
+	&UsageLine();
+	print "This command allows to:\n";
+	print "\n";
+	print "  -help or -h   Display this help.\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

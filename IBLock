@@ -1,0 +1,164 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	IBLock
+##        Author:	Stanley Au-Yeung
+##          Date:	Saturday, May 3, 2008
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	05/03/08	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Basename;
+
+my $gFolderPath;
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+# set version string
+$version = "1.0";
+
+$gCheckStatus = 0;
+$gIBLock = 0;
+$gIBUnlock = 0;
+$gFolderPath = "";
+
+
+#---------------------------------------------------------------------------------------------
+#	Deals with arguments
+#---------------------------------------------------------------------------------------------
+
+foreach $item (@ARGV)
+{
+	if ($item eq "-checkStatus")
+	{
+		$gCheckStatus = 1;
+	}
+	elsif ($item eq "-ibLock")
+	{
+		$gIBLock = 1;
+	}
+	elsif ($item eq "-ibUnlock")
+	{
+		$gIBUnlock = 1;
+	}
+	else
+	{
+		$gFolderPath = $item;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+if (-d $gFolderPath)
+{
+	if ($gCheckStatus == 1)
+	{
+		my $appleGlotEnvNewLocPath = $gFolderPath . "_NewLoc/";
+
+		chomp(@searchResult = `find "$appleGlotEnvNewLocPath" -type f | grep ".iblockingrules"`);
+
+		if (@searchResult == 0)
+		{
+			print "0";
+		}
+		else
+		{
+			print "1";
+		}
+	}
+	elsif ($gIBLock == 1)
+	{
+		my $appleGlotEnvNewLocPath = $gFolderPath . "_NewLoc/";
+		my $appleGlotEnvIBlockingRulesPath = $gFolderPath . "_iblockingrules/";
+		my $appleGlotEnvIBLabelsPath = $gFolderPath . "_iblabels/";
+
+		if (-d $appleGlotEnvIBlockingRulesPath)
+		{
+			chomp(@searchResult = `find "$appleGlotEnvIBlockingRulesPath" -type f | grep ".iblockingrules"`);
+
+			foreach $file (@searchResult)
+			{
+				my $newLocFile = $file;
+				
+				$newLocFile =~ s/$appleGlotEnvIBlockingRulesPath/$appleGlotEnvNewLocPath/;
+				`ditto "$file" "$newLocFile"`;
+			}
+		}
+
+		
+		if (-d $appleGlotEnvIBLabelsPath)
+		{
+			chomp(@searchResult = `find "$appleGlotEnvIBLabelsPath" -type f | grep ".iblabels"`);
+			
+			foreach $file (@searchResult)
+			{
+				my $newLocFile = $file;
+				
+				$newLocFile =~ s/$appleGlotEnvIBLabelsPath/$appleGlotEnvNewLocPath/;
+				`ditto "$file" "$newLocFile"`;
+			}
+		}
+	}
+	elsif ($gIBUnlock == 1)
+	{
+		my $appleGlotEnvNewLocPath = $gFolderPath . "_NewLoc/";
+
+		chomp(@searchResult = `find "$appleGlotEnvNewLocPath" -type f | grep ".iblockingrules"`);
+
+		foreach $file (@searchResult)
+		{
+			`rm -d -r "$file"`;
+		}
+	}
+}
+else
+{
+	print "0";
+}
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

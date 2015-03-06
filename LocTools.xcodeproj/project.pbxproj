@@ -1,0 +1,868 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		840115A31AA35AE100CB606A /* findIDAndRect.py in Resources */ = {isa = PBXBuildFile; fileRef = 840115A21AA35AE100CB606A /* findIDAndRect.py */; };
+		8401600F19136C6700B942A9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8401600E19136C6700B942A9 /* Cocoa.framework */; };
+		8401601919136C6700B942A9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8401601719136C6700B942A9 /* InfoPlist.strings */; };
+		8401601B19136C6700B942A9 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 8401601A19136C6700B942A9 /* main.m */; };
+		8401602219136C6700B942A9 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 8401602119136C6700B942A9 /* AppDelegate.m */; };
+		8401602719136C6700B942A9 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8401602619136C6700B942A9 /* Images.xcassets */; };
+		8401602E19136C6700B942A9 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8401602D19136C6700B942A9 /* XCTest.framework */; };
+		8401602F19136C6700B942A9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8401600E19136C6700B942A9 /* Cocoa.framework */; };
+		8401603719136C6700B942A9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8401603519136C6700B942A9 /* InfoPlist.strings */; };
+		8401603919136C6700B942A9 /* LocToolsTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 8401603819136C6700B942A9 /* LocToolsTests.m */; };
+		8405BADA191715D60018D504 /* App.icns in Resources */ = {isa = PBXBuildFile; fileRef = 8405BAD9191715D60018D504 /* App.icns */; };
+		841E281419D6591F007908F8 /* iTunes_itxib_tool.pl in Resources */ = {isa = PBXBuildFile; fileRef = 841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */; };
+		841F57A4191BA31A0002A145 /* firstopen.py in Resources */ = {isa = PBXBuildFile; fileRef = 841F579D191BA31A0002A145 /* firstopen.py */; };
+		843121DC192460960096048C /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 843121DB192460960096048C /* Credits.rtf */; };
+		843121DD192460960096048C /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 843121DB192460960096048C /* Credits.rtf */; };
+		84329BA219AF03B70016C343 /* xliffdiffer.py in Resources */ = {isa = PBXBuildFile; fileRef = 84329BA019AF03B70016C343 /* xliffdiffer.py */; };
+		8432B5F019B566CB00C8B7EE /* AAflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 8432B5EE19B566CB00C8B7EE /* AAflverifier */; };
+		8432B5F119B566CB00C8B7EE /* AALocUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */; };
+		8433121C1A43F47200A03876 /* makeautoFtp_plus.pl in Resources */ = {isa = PBXBuildFile; fileRef = 8433121B1A43F47200A03876 /* makeautoFtp_plus.pl */; };
+		84370E6519D3FB0900D65F17 /* iTunes_itxib_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = 84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */; };
+		84370E6919D42FBB00D65F17 /* AALocCommand_Org in Resources */ = {isa = PBXBuildFile; fileRef = 84370E6819D42FBB00D65F17 /* AALocCommand_Org */; };
+		84370E6B19D43C4800D65F17 /* printXcodePath.sh in Resources */ = {isa = PBXBuildFile; fileRef = 84370E6A19D43C4800D65F17 /* printXcodePath.sh */; };
+		84429E6F19E7B88A007BAD81 /* xliffState.py in Resources */ = {isa = PBXBuildFile; fileRef = 84429E6E19E7B88A007BAD81 /* xliffState.py */; };
+		8451C0ED1A44097B0052C577 /* xliffdiffer_lite.py in Resources */ = {isa = PBXBuildFile; fileRef = 8451C0EC1A44097B0052C577 /* xliffdiffer_lite.py */; };
+		8457CC51192F320300D94999 /* bugfixcomments.py in Resources */ = {isa = PBXBuildFile; fileRef = 8457CC50192F320300D94999 /* bugfixcomments.py */; };
+		84580C5519D39E8E00D059AE /* clearFolder.sh in Resources */ = {isa = PBXBuildFile; fileRef = 84580C5319D39E8E00D059AE /* clearFolder.sh */; };
+		84580C5619D39E8E00D059AE /* createFolder.sh in Resources */ = {isa = PBXBuildFile; fileRef = 84580C5419D39E8E00D059AE /* createFolder.sh */; };
+		84580C5819D3AB2300D059AE /* createCompareFolder.sh in Resources */ = {isa = PBXBuildFile; fileRef = 84580C5719D3AB2300D059AE /* createCompareFolder.sh */; };
+		845D74651A845A5700E4D469 /* AALocEnvUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */; };
+		845F417C19D0131A00333A71 /* Temp_CheckAllPro.py in Resources */ = {isa = PBXBuildFile; fileRef = 845F417B19D0131A00333A71 /* Temp_CheckAllPro.py */; };
+		845F418119D0176E00333A71 /* AAflverifier_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 845F417D19D0176E00333A71 /* AAflverifier_Pro */; };
+		845F418219D0176E00333A71 /* AAflverifierFilter_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */; };
+		845F418319D0176E00333A71 /* AALocCommand in Resources */ = {isa = PBXBuildFile; fileRef = 845F417F19D0176E00333A71 /* AALocCommand */; };
+		8462917C19D194BF00A0BA38 /* finaltest.py in Resources */ = {isa = PBXBuildFile; fileRef = 8462917B19D194BF00A0BA38 /* finaltest.py */; };
+		846C8A0319AC15C2006C377D /* Envtester.py in Resources */ = {isa = PBXBuildFile; fileRef = 846C8A0219AC15C2006C377D /* Envtester.py */; };
+		846C8A0519AC15C7006C377D /* ComponentData.py in Resources */ = {isa = PBXBuildFile; fileRef = 846C8A0419AC15C7006C377D /* ComponentData.py */; };
+		8477D01519C02E3B00DDA707 /* OtherTools.m in Sources */ = {isa = PBXBuildFile; fileRef = 8477D01319C02E3B00DDA707 /* OtherTools.m */; };
+		8477D01619C02E3B00DDA707 /* OtherTools.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8477D01419C02E3B00DDA707 /* OtherTools.xib */; };
+		847D4AD819D954A9003EB7FF /* client.py in Resources */ = {isa = PBXBuildFile; fileRef = 847D4AD719D954A9003EB7FF /* client.py */; };
+		84812A2719F7887A00D195DA /* Envtester_new.py in Resources */ = {isa = PBXBuildFile; fileRef = 84812A2619F7887A00D195DA /* Envtester_new.py */; };
+		848B2A931A80AC170037DAB8 /* PCXPlugins.py in Resources */ = {isa = PBXBuildFile; fileRef = 848B2A921A80AC170037DAB8 /* PCXPlugins.py */; };
+		84931570191A649600629D01 /* AAad2insight in Resources */ = {isa = PBXBuildFile; fileRef = 8493148A191A649500629D01 /* AAad2insight */; };
+		84931571191A649600629D01 /* AACheckConductorLocEnv in Resources */ = {isa = PBXBuildFile; fileRef = 8493148B191A649500629D01 /* AACheckConductorLocEnv */; };
+		84931572191A649600629D01 /* AACheckGlotEnv in Resources */ = {isa = PBXBuildFile; fileRef = 8493148C191A649500629D01 /* AACheckGlotEnv */; };
+		84931573191A649600629D01 /* AACheckLKCX in Resources */ = {isa = PBXBuildFile; fileRef = 8493148D191A649500629D01 /* AACheckLKCX */; };
+		84931574191A649600629D01 /* AACheckLocEnv in Resources */ = {isa = PBXBuildFile; fileRef = 8493148E191A649500629D01 /* AACheckLocEnv */; };
+		84931575191A649600629D01 /* AACheckNotTranslatedString in Resources */ = {isa = PBXBuildFile; fileRef = 8493148F191A649500629D01 /* AACheckNotTranslatedString */; };
+		84931576191A649600629D01 /* AACheckProblemNibs in Resources */ = {isa = PBXBuildFile; fileRef = 84931490191A649500629D01 /* AACheckProblemNibs */; };
+		84931577191A649600629D01 /* AACleanupTier3NewLoc in Resources */ = {isa = PBXBuildFile; fileRef = 84931491191A649500629D01 /* AACleanupTier3NewLoc */; };
+		84931578191A649600629D01 /* AAcompare_strings in Resources */ = {isa = PBXBuildFile; fileRef = 84931492191A649500629D01 /* AAcompare_strings */; };
+		84931579191A649600629D01 /* AADNT in Resources */ = {isa = PBXBuildFile; fileRef = 84931493191A649500629D01 /* AADNT */; };
+		8493157A191A649600629D01 /* AAExpandPackage in Resources */ = {isa = PBXBuildFile; fileRef = 84931494191A649500629D01 /* AAExpandPackage */; };
+		8493157B191A649600629D01 /* AAExpandTarballs in Resources */ = {isa = PBXBuildFile; fileRef = 84931495191A649500629D01 /* AAExpandTarballs */; };
+		8493157C191A649600629D01 /* AAExtractAttributedStrings in Resources */ = {isa = PBXBuildFile; fileRef = 84931496191A649500629D01 /* AAExtractAttributedStrings */; };
+		8493157D191A649600629D01 /* AAExtractNib in Resources */ = {isa = PBXBuildFile; fileRef = 84931497191A649500629D01 /* AAExtractNib */; };
+		8493157F191A649600629D01 /* AAflverifierFilter in Resources */ = {isa = PBXBuildFile; fileRef = 84931499191A649500629D01 /* AAflverifierFilter */; };
+		84931580191A649600629D01 /* AAinsight2wg in Resources */ = {isa = PBXBuildFile; fileRef = 8493149A191A649500629D01 /* AAinsight2wg */; };
+		84931581191A649600629D01 /* AALocAppleGlotUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8493149B191A649500629D01 /* AALocAppleGlotUtilities.pm */; };
+		84931588191A649600629D01 /* AALocFileUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 849314A2191A649500629D01 /* AALocFileUtilities.pm */; };
+		8493158A191A649600629D01 /* AAMergeGlossaries in Resources */ = {isa = PBXBuildFile; fileRef = 849314A4191A649500629D01 /* AAMergeGlossaries */; };
+		8493158B191A649600629D01 /* AANibImageRiper in Resources */ = {isa = PBXBuildFile; fileRef = 849314A5191A649500629D01 /* AANibImageRiper */; };
+		8493158C191A649600629D01 /* AAProcessNibScore in Resources */ = {isa = PBXBuildFile; fileRef = 849314A6191A649500629D01 /* AAProcessNibScore */; };
+		8493158D191A649600629D01 /* AAProcessNonGlotableFiles in Resources */ = {isa = PBXBuildFile; fileRef = 849314A7191A649500629D01 /* AAProcessNonGlotableFiles */; };
+		8493158E191A649600629D01 /* AASplitLocKit in Resources */ = {isa = PBXBuildFile; fileRef = 849314A8191A649500629D01 /* AASplitLocKit */; };
+		8493158F191A649600629D01 /* AAURLs in Resources */ = {isa = PBXBuildFile; fileRef = 849314A9191A649500629D01 /* AAURLs */; };
+		84931590191A649600629D01 /* AAWGADUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 849314AA191A649500629D01 /* AAWGADUtilities.pm */; };
+		84931591191A649600629D01 /* AAWinflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 849314AB191A649500629D01 /* AAWinflverifier */; };
+		84931592191A649600629D01 /* AAXliffUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 849314AC191A649500629D01 /* AAXliffUtilities.pm */; };
+		84931595191A649600629D01 /* Alter.pl in Resources */ = {isa = PBXBuildFile; fileRef = 849314AF191A649500629D01 /* Alter.pl */; };
+		84931596191A649600629D01 /* Alter.pm in Resources */ = {isa = PBXBuildFile; fileRef = 849314B0191A649500629D01 /* Alter.pm */; };
+		8493159C191A649600629D01 /* ar.xml in Resources */ = {isa = PBXBuildFile; fileRef = 849314B6191A649500629D01 /* ar.xml */; };
+		849315B5191A649600629D01 /* ComponentListLocEnv in Resources */ = {isa = PBXBuildFile; fileRef = 849314CF191A649500629D01 /* ComponentListLocEnv */; };
+		849315B9191A649600629D01 /* ConductorUtilitiesCommands in Resources */ = {isa = PBXBuildFile; fileRef = 849314D3191A649500629D01 /* ConductorUtilitiesCommands */; };
+		849315BB191A649600629D01 /* cplproj in Resources */ = {isa = PBXBuildFile; fileRef = 849314D5191A649500629D01 /* cplproj */; };
+		849315D3191A649600629D01 /* fpcx in Resources */ = {isa = PBXBuildFile; fileRef = 849314F1191A649500629D01 /* fpcx */; };
+		849315E0191A649600629D01 /* IBLock in Resources */ = {isa = PBXBuildFile; fileRef = 849314FE191A649500629D01 /* IBLock */; };
+		849315E3191A649600629D01 /* install_loctar in Resources */ = {isa = PBXBuildFile; fileRef = 84931501191A649500629D01 /* install_loctar */; };
+		849315E9191A649600629D01 /* keys.plist in Resources */ = {isa = PBXBuildFile; fileRef = 84931507191A649500629D01 /* keys.plist */; };
+		849315EC191A649600629D01 /* Loc.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8493150A191A649500629D01 /* Loc.pm */; };
+		849315F4191A649600629D01 /* MaskNumberAndCountryInTar.pl in Resources */ = {isa = PBXBuildFile; fileRef = 84931512191A649500629D01 /* MaskNumberAndCountryInTar.pl */; };
+		849315FF191A649600629D01 /* Pcx.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8493151D191A649500629D01 /* Pcx.pm */; };
+		84931600191A649600629D01 /* pcx2 in Resources */ = {isa = PBXBuildFile; fileRef = 8493151E191A649500629D01 /* pcx2 */; };
+		84931601191A649600629D01 /* Pcxout.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8493151F191A649500629D01 /* Pcxout.pm */; };
+		84931613191A649600629D01 /* ReportChecker in Resources */ = {isa = PBXBuildFile; fileRef = 84931532191A649600629D01 /* ReportChecker */; };
+		84931643191A649600629D01 /* verificator in Resources */ = {isa = PBXBuildFile; fileRef = 84931562191A649600629D01 /* verificator */; };
+		84931652191A6F0A00629D01 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 84931651191A6F0A00629D01 /* MainMenu.xib */; };
+		849717E5191E27A900D3070B /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 849717E4191E27A900D3070B /* AVFoundation.framework */; };
+		84C560B419D2654900A3E9A6 /* autoFtp.py in Resources */ = {isa = PBXBuildFile; fileRef = 84C560B319D2654900A3E9A6 /* autoFtp.py */; };
+		84C560B619D2E8B100A3E9A6 /* alert.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 84C560B519D2E8B100A3E9A6 /* alert.jpg */; };
+		84CB2BC1191CC70D007B8D15 /* notice.py in Resources */ = {isa = PBXBuildFile; fileRef = 84CB2BC0191CC70D007B8D15 /* notice.py */; };
+		84DD6F621A805CE800EDE3A3 /* parameterstester.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F611A805CE800EDE3A3 /* parameterstester.py */; };
+		84DD6F661A805D1400EDE3A3 /* ScanReports.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F651A805D1400EDE3A3 /* ScanReports.py */; };
+		84DD6F681A805D3B00EDE3A3 /* ProAppDitto.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F671A805D3B00EDE3A3 /* ProAppDitto.py */; };
+		84DD6F6A1A80730600EDE3A3 /* countrySelect.plist in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F691A80730600EDE3A3 /* countrySelect.plist */; };
+		84F5DA9A19152DF400A265D1 /* LocTools-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 84F5DA9919152DF400A265D1 /* LocTools-Info.plist */; };
+		84F7528219C2A24700E32E37 /* Temp_Envtester.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7527E19C2A24700E32E37 /* Temp_Envtester.py */; };
+		84F7528319C2A24700E32E37 /* Temp_LocEnv.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7527F19C2A24700E32E37 /* Temp_LocEnv.py */; };
+		84F7528419C2A24700E32E37 /* Temp_Itxib.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7528019C2A24700E32E37 /* Temp_Itxib.py */; };
+		84F7528A19C2A25100E32E37 /* Temp_CheckAll.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7528619C2A25100E32E37 /* Temp_CheckAll.py */; };
+		84F7528B19C2A25100E32E37 /* Temp_CheckTar.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7528719C2A25100E32E37 /* Temp_CheckTar.py */; };
+		84F7528C19C2A25100E32E37 /* Temp_AutoFtp.py in Resources */ = {isa = PBXBuildFile; fileRef = 84F7528819C2A25100E32E37 /* Temp_AutoFtp.py */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8401603019136C6700B942A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8401600319136C6700B942A9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8401600A19136C6700B942A9;
+			remoteInfo = LocTools;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		840115A21AA35AE100CB606A /* findIDAndRect.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = findIDAndRect.py; sourceTree = "<group>"; };
+		8401600B19136C6700B942A9 /* LocTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8401600E19136C6700B942A9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		8401601119136C6700B942A9 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		8401601219136C6700B942A9 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		8401601319136C6700B942A9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		8401601819136C6700B942A9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		8401601A19136C6700B942A9 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		8401601C19136C6700B942A9 /* LocTools-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "LocTools-Prefix.pch"; sourceTree = "<group>"; };
+		8401602019136C6700B942A9 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		8401602119136C6700B942A9 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		8401602619136C6700B942A9 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		8401602C19136C6700B942A9 /* LocToolsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LocToolsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8401602D19136C6700B942A9 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		8401603419136C6700B942A9 /* LocToolsTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "LocToolsTests-Info.plist"; sourceTree = "<group>"; };
+		8401603619136C6700B942A9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		8401603819136C6700B942A9 /* LocToolsTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LocToolsTests.m; sourceTree = "<group>"; };
+		8405BAD9191715D60018D504 /* App.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = App.icns; sourceTree = "<group>"; };
+		841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = iTunes_itxib_tool.pl; sourceTree = "<group>"; };
+		841F579D191BA31A0002A145 /* firstopen.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = firstopen.py; sourceTree = "<group>"; };
+		842B04BD19D036DD0080D369 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		843121DB192460960096048C /* Credits.rtf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
+		84329BA019AF03B70016C343 /* xliffdiffer.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = xliffdiffer.py; sourceTree = "<group>"; };
+		8432B5EE19B566CB00C8B7EE /* AAflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier; sourceTree = "<group>"; };
+		8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocUtilities.pm; sourceTree = "<group>"; };
+		8433121B1A43F47200A03876 /* makeautoFtp_plus.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = makeautoFtp_plus.pl; sourceTree = "<group>"; };
+		84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = iTunes_itxib_tool.py; sourceTree = "<group>"; };
+		84370E6819D42FBB00D65F17 /* AALocCommand_Org */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand_Org; sourceTree = "<group>"; };
+		84370E6A19D43C4800D65F17 /* printXcodePath.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = printXcodePath.sh; sourceTree = "<group>"; };
+		84429E6E19E7B88A007BAD81 /* xliffState.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = xliffState.py; sourceTree = "<group>"; };
+		8451C0EC1A44097B0052C577 /* xliffdiffer_lite.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = xliffdiffer_lite.py; sourceTree = "<group>"; };
+		8457CC50192F320300D94999 /* bugfixcomments.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = bugfixcomments.py; sourceTree = "<group>"; };
+		84580C5319D39E8E00D059AE /* clearFolder.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = clearFolder.sh; sourceTree = "<group>"; };
+		84580C5419D39E8E00D059AE /* createFolder.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = createFolder.sh; sourceTree = "<group>"; };
+		84580C5719D3AB2300D059AE /* createCompareFolder.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = createCompareFolder.sh; sourceTree = "<group>"; };
+		845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocEnvUtilities.pm; sourceTree = "<group>"; };
+		845F417B19D0131A00333A71 /* Temp_CheckAllPro.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_CheckAllPro.py; sourceTree = "<group>"; };
+		845F417D19D0176E00333A71 /* AAflverifier_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier_Pro; sourceTree = "<group>"; };
+		845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifierFilter_Pro; sourceTree = "<group>"; };
+		845F417F19D0176E00333A71 /* AALocCommand */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand; sourceTree = "<group>"; };
+		8462917B19D194BF00A0BA38 /* finaltest.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = finaltest.py; sourceTree = "<group>"; };
+		846C8A0219AC15C2006C377D /* Envtester.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Envtester.py; sourceTree = "<group>"; };
+		846C8A0419AC15C7006C377D /* ComponentData.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ComponentData.py; sourceTree = "<group>"; };
+		8477D01219C02E3B00DDA707 /* OtherTools.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OtherTools.h; sourceTree = "<group>"; };
+		8477D01319C02E3B00DDA707 /* OtherTools.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OtherTools.m; sourceTree = "<group>"; };
+		8477D01419C02E3B00DDA707 /* OtherTools.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = OtherTools.xib; sourceTree = "<group>"; };
+		847D4AD719D954A9003EB7FF /* client.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = client.py; sourceTree = "<group>"; };
+		84812A2619F7887A00D195DA /* Envtester_new.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Envtester_new.py; sourceTree = "<group>"; };
+		848B2A921A80AC170037DAB8 /* PCXPlugins.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = PCXPlugins.py; sourceTree = "<group>"; };
+		8493148A191A649500629D01 /* AAad2insight */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAad2insight; sourceTree = "<group>"; };
+		8493148B191A649500629D01 /* AACheckConductorLocEnv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckConductorLocEnv; sourceTree = "<group>"; };
+		8493148C191A649500629D01 /* AACheckGlotEnv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckGlotEnv; sourceTree = "<group>"; };
+		8493148D191A649500629D01 /* AACheckLKCX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckLKCX; sourceTree = "<group>"; };
+		8493148E191A649500629D01 /* AACheckLocEnv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckLocEnv; sourceTree = "<group>"; };
+		8493148F191A649500629D01 /* AACheckNotTranslatedString */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckNotTranslatedString; sourceTree = "<group>"; };
+		84931490191A649500629D01 /* AACheckProblemNibs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACheckProblemNibs; sourceTree = "<group>"; };
+		84931491191A649500629D01 /* AACleanupTier3NewLoc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AACleanupTier3NewLoc; sourceTree = "<group>"; };
+		84931492191A649500629D01 /* AAcompare_strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAcompare_strings; sourceTree = "<group>"; };
+		84931493191A649500629D01 /* AADNT */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AADNT; sourceTree = "<group>"; };
+		84931494191A649500629D01 /* AAExpandPackage */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAExpandPackage; sourceTree = "<group>"; };
+		84931495191A649500629D01 /* AAExpandTarballs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAExpandTarballs; sourceTree = "<group>"; };
+		84931496191A649500629D01 /* AAExtractAttributedStrings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAExtractAttributedStrings; sourceTree = "<group>"; };
+		84931497191A649500629D01 /* AAExtractNib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAExtractNib; sourceTree = "<group>"; };
+		84931499191A649500629D01 /* AAflverifierFilter */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifierFilter; sourceTree = "<group>"; };
+		8493149A191A649500629D01 /* AAinsight2wg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAinsight2wg; sourceTree = "<group>"; };
+		8493149B191A649500629D01 /* AALocAppleGlotUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocAppleGlotUtilities.pm; sourceTree = "<group>"; };
+		849314A2191A649500629D01 /* AALocFileUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocFileUtilities.pm; sourceTree = "<group>"; };
+		849314A4191A649500629D01 /* AAMergeGlossaries */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAMergeGlossaries; sourceTree = "<group>"; };
+		849314A5191A649500629D01 /* AANibImageRiper */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = AANibImageRiper; sourceTree = "<group>"; };
+		849314A6191A649500629D01 /* AAProcessNibScore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAProcessNibScore; sourceTree = "<group>"; };
+		849314A7191A649500629D01 /* AAProcessNonGlotableFiles */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAProcessNonGlotableFiles; sourceTree = "<group>"; };
+		849314A8191A649500629D01 /* AASplitLocKit */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AASplitLocKit; sourceTree = "<group>"; };
+		849314A9191A649500629D01 /* AAURLs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AAURLs; sourceTree = "<group>"; };
+		849314AA191A649500629D01 /* AAWGADUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAWGADUtilities.pm; sourceTree = "<group>"; };
+		849314AB191A649500629D01 /* AAWinflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAWinflverifier; sourceTree = "<group>"; };
+		849314AC191A649500629D01 /* AAXliffUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAXliffUtilities.pm; sourceTree = "<group>"; };
+		849314AF191A649500629D01 /* Alter.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = Alter.pl; sourceTree = "<group>"; };
+		849314B0191A649500629D01 /* Alter.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = Alter.pm; sourceTree = "<group>"; };
+		849314B6191A649500629D01 /* ar.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = ar.xml; sourceTree = "<group>"; };
+		849314CF191A649500629D01 /* ComponentListLocEnv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ComponentListLocEnv; sourceTree = "<group>"; };
+		849314D3191A649500629D01 /* ConductorUtilitiesCommands */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ConductorUtilitiesCommands; sourceTree = "<group>"; };
+		849314D5191A649500629D01 /* cplproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = cplproj; sourceTree = "<group>"; };
+		849314F1191A649500629D01 /* fpcx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = fpcx; sourceTree = "<group>"; };
+		849314FE191A649500629D01 /* IBLock */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = IBLock; sourceTree = "<group>"; };
+		84931501191A649500629D01 /* install_loctar */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = install_loctar; sourceTree = "<group>"; };
+		84931507191A649500629D01 /* keys.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = keys.plist; sourceTree = "<group>"; };
+		8493150A191A649500629D01 /* Loc.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = Loc.pm; sourceTree = "<group>"; };
+		84931512191A649500629D01 /* MaskNumberAndCountryInTar.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = MaskNumberAndCountryInTar.pl; sourceTree = "<group>"; };
+		8493151D191A649500629D01 /* Pcx.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = Pcx.pm; sourceTree = "<group>"; };
+		8493151E191A649500629D01 /* pcx2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pcx2; sourceTree = "<group>"; };
+		8493151F191A649500629D01 /* Pcxout.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = Pcxout.pm; sourceTree = "<group>"; };
+		84931532191A649600629D01 /* ReportChecker */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = ReportChecker; sourceTree = "<group>"; };
+		84931562191A649600629D01 /* verificator */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = verificator; sourceTree = "<group>"; };
+		84931651191A6F0A00629D01 /* MainMenu.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
+		849717E4191E27A900D3070B /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		84C560B319D2654900A3E9A6 /* autoFtp.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = autoFtp.py; sourceTree = "<group>"; };
+		84C560B519D2E8B100A3E9A6 /* alert.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = alert.jpg; sourceTree = "<group>"; };
+		84CB2BC0191CC70D007B8D15 /* notice.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = notice.py; sourceTree = "<group>"; };
+		84DD6F611A805CE800EDE3A3 /* parameterstester.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = parameterstester.py; sourceTree = "<group>"; };
+		84DD6F651A805D1400EDE3A3 /* ScanReports.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ScanReports.py; sourceTree = "<group>"; };
+		84DD6F671A805D3B00EDE3A3 /* ProAppDitto.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ProAppDitto.py; sourceTree = "<group>"; };
+		84DD6F691A80730600EDE3A3 /* countrySelect.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = countrySelect.plist; sourceTree = "<group>"; };
+		84F5DA9919152DF400A265D1 /* LocTools-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "LocTools-Info.plist"; sourceTree = "<group>"; };
+		84F7527E19C2A24700E32E37 /* Temp_Envtester.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_Envtester.py; sourceTree = "<group>"; };
+		84F7527F19C2A24700E32E37 /* Temp_LocEnv.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_LocEnv.py; sourceTree = "<group>"; };
+		84F7528019C2A24700E32E37 /* Temp_Itxib.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_Itxib.py; sourceTree = "<group>"; };
+		84F7528619C2A25100E32E37 /* Temp_CheckAll.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_CheckAll.py; sourceTree = "<group>"; };
+		84F7528719C2A25100E32E37 /* Temp_CheckTar.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_CheckTar.py; sourceTree = "<group>"; };
+		84F7528819C2A25100E32E37 /* Temp_AutoFtp.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_AutoFtp.py; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8401600819136C6700B942A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				849717E5191E27A900D3070B /* AVFoundation.framework in Frameworks */,
+				8401600F19136C6700B942A9 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8401602919136C6700B942A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8401602F19136C6700B942A9 /* Cocoa.framework in Frameworks */,
+				8401602E19136C6700B942A9 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8401600219136C6700B942A9 = {
+			isa = PBXGroup;
+			children = (
+				84580C5219D39D3B00D059AE /* Shell */,
+				84367F7C19C278A700B1760D /* TempPython */,
+				846CF41119C01F3A0078EE04 /* IB */,
+				84961C8C191A243A007CF53D /* AALocBench */,
+				844A9ED219185EAB0060252D /* python */,
+				8401601419136C6700B942A9 /* LocTools */,
+				8401603219136C6700B942A9 /* LocToolsTests */,
+				8401600D19136C6700B942A9 /* Frameworks */,
+				8401600C19136C6700B942A9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8401600C19136C6700B942A9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8401600B19136C6700B942A9 /* LocTools.app */,
+				8401602C19136C6700B942A9 /* LocToolsTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8401600D19136C6700B942A9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				842B04BD19D036DD0080D369 /* CoreText.framework */,
+				849717E4191E27A900D3070B /* AVFoundation.framework */,
+				8401600E19136C6700B942A9 /* Cocoa.framework */,
+				8401602D19136C6700B942A9 /* XCTest.framework */,
+				8401601019136C6700B942A9 /* Other Frameworks */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		8401601019136C6700B942A9 /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8401601119136C6700B942A9 /* AppKit.framework */,
+				8401601219136C6700B942A9 /* CoreData.framework */,
+				8401601319136C6700B942A9 /* Foundation.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		8401601419136C6700B942A9 /* LocTools */ = {
+			isa = PBXGroup;
+			children = (
+				8405BAD9191715D60018D504 /* App.icns */,
+				8401602019136C6700B942A9 /* AppDelegate.h */,
+				8401602119136C6700B942A9 /* AppDelegate.m */,
+				84931651191A6F0A00629D01 /* MainMenu.xib */,
+				84DD6F691A80730600EDE3A3 /* countrySelect.plist */,
+				8401602619136C6700B942A9 /* Images.xcassets */,
+				8401601519136C6700B942A9 /* Supporting Files */,
+			);
+			path = LocTools;
+			sourceTree = "<group>";
+		};
+		8401601519136C6700B942A9 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				84F5DA9919152DF400A265D1 /* LocTools-Info.plist */,
+				8401601719136C6700B942A9 /* InfoPlist.strings */,
+				8401601A19136C6700B942A9 /* main.m */,
+				8401601C19136C6700B942A9 /* LocTools-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		8401603219136C6700B942A9 /* LocToolsTests */ = {
+			isa = PBXGroup;
+			children = (
+				8401603819136C6700B942A9 /* LocToolsTests.m */,
+				8401603319136C6700B942A9 /* Supporting Files */,
+			);
+			path = LocToolsTests;
+			sourceTree = "<group>";
+		};
+		8401603319136C6700B942A9 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				8401603419136C6700B942A9 /* LocToolsTests-Info.plist */,
+				8401603519136C6700B942A9 /* InfoPlist.strings */,
+				843121DB192460960096048C /* Credits.rtf */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		84367F7C19C278A700B1760D /* TempPython */ = {
+			isa = PBXGroup;
+			children = (
+				84F7527F19C2A24700E32E37 /* Temp_LocEnv.py */,
+				84F7527E19C2A24700E32E37 /* Temp_Envtester.py */,
+				84F7528019C2A24700E32E37 /* Temp_Itxib.py */,
+				84F7528619C2A25100E32E37 /* Temp_CheckAll.py */,
+				845F417B19D0131A00333A71 /* Temp_CheckAllPro.py */,
+				84F7528719C2A25100E32E37 /* Temp_CheckTar.py */,
+				84F7528819C2A25100E32E37 /* Temp_AutoFtp.py */,
+			);
+			name = TempPython;
+			sourceTree = "<group>";
+		};
+		844A9ED219185EAB0060252D /* python */ = {
+			isa = PBXGroup;
+			children = (
+				840115A21AA35AE100CB606A /* findIDAndRect.py */,
+				846C8A0419AC15C7006C377D /* ComponentData.py */,
+				846C8A0219AC15C2006C377D /* Envtester.py */,
+				84CB2BC0191CC70D007B8D15 /* notice.py */,
+				8462917B19D194BF00A0BA38 /* finaltest.py */,
+				84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */,
+				84812A2619F7887A00D195DA /* Envtester_new.py */,
+				84DD6F651A805D1400EDE3A3 /* ScanReports.py */,
+				84C560B319D2654900A3E9A6 /* autoFtp.py */,
+				848B2A921A80AC170037DAB8 /* PCXPlugins.py */,
+				847D4AD719D954A9003EB7FF /* client.py */,
+				84329BA019AF03B70016C343 /* xliffdiffer.py */,
+				8457CC50192F320300D94999 /* bugfixcomments.py */,
+				841F579D191BA31A0002A145 /* firstopen.py */,
+				8433121B1A43F47200A03876 /* makeautoFtp_plus.pl */,
+				841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */,
+			);
+			name = python;
+			sourceTree = "<group>";
+		};
+		84580C5219D39D3B00D059AE /* Shell */ = {
+			isa = PBXGroup;
+			children = (
+				84580C5319D39E8E00D059AE /* clearFolder.sh */,
+				84580C5419D39E8E00D059AE /* createFolder.sh */,
+				84580C5719D3AB2300D059AE /* createCompareFolder.sh */,
+				84370E6A19D43C4800D65F17 /* printXcodePath.sh */,
+			);
+			name = Shell;
+			sourceTree = "<group>";
+		};
+		846CF41119C01F3A0078EE04 /* IB */ = {
+			isa = PBXGroup;
+			children = (
+				8477D01219C02E3B00DDA707 /* OtherTools.h */,
+				8477D01319C02E3B00DDA707 /* OtherTools.m */,
+				8477D01419C02E3B00DDA707 /* OtherTools.xib */,
+				84DD6F671A805D3B00EDE3A3 /* ProAppDitto.py */,
+				8451C0EC1A44097B0052C577 /* xliffdiffer_lite.py */,
+				84DD6F611A805CE800EDE3A3 /* parameterstester.py */,
+				84429E6E19E7B88A007BAD81 /* xliffState.py */,
+				84C560B519D2E8B100A3E9A6 /* alert.jpg */,
+			);
+			name = IB;
+			sourceTree = "<group>";
+		};
+		84961C8C191A243A007CF53D /* AALocBench */ = {
+			isa = PBXGroup;
+			children = (
+				8493148A191A649500629D01 /* AAad2insight */,
+				8493148B191A649500629D01 /* AACheckConductorLocEnv */,
+				8493148C191A649500629D01 /* AACheckGlotEnv */,
+				8493148D191A649500629D01 /* AACheckLKCX */,
+				8493148E191A649500629D01 /* AACheckLocEnv */,
+				8493148F191A649500629D01 /* AACheckNotTranslatedString */,
+				84931490191A649500629D01 /* AACheckProblemNibs */,
+				84931491191A649500629D01 /* AACleanupTier3NewLoc */,
+				84931492191A649500629D01 /* AAcompare_strings */,
+				84931493191A649500629D01 /* AADNT */,
+				84931494191A649500629D01 /* AAExpandPackage */,
+				84931495191A649500629D01 /* AAExpandTarballs */,
+				8432B5EE19B566CB00C8B7EE /* AAflverifier */,
+				8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */,
+				84931496191A649500629D01 /* AAExtractAttributedStrings */,
+				84931497191A649500629D01 /* AAExtractNib */,
+				845F417D19D0176E00333A71 /* AAflverifier_Pro */,
+				845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */,
+				845F417F19D0176E00333A71 /* AALocCommand */,
+				84370E6819D42FBB00D65F17 /* AALocCommand_Org */,
+				84931499191A649500629D01 /* AAflverifierFilter */,
+				845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */,
+				8493149A191A649500629D01 /* AAinsight2wg */,
+				8493149B191A649500629D01 /* AALocAppleGlotUtilities.pm */,
+				849314A2191A649500629D01 /* AALocFileUtilities.pm */,
+				849314A4191A649500629D01 /* AAMergeGlossaries */,
+				849314A5191A649500629D01 /* AANibImageRiper */,
+				849314A6191A649500629D01 /* AAProcessNibScore */,
+				849314A7191A649500629D01 /* AAProcessNonGlotableFiles */,
+				849314A8191A649500629D01 /* AASplitLocKit */,
+				849314A9191A649500629D01 /* AAURLs */,
+				849314AA191A649500629D01 /* AAWGADUtilities.pm */,
+				849314AB191A649500629D01 /* AAWinflverifier */,
+				849314AC191A649500629D01 /* AAXliffUtilities.pm */,
+				849314AF191A649500629D01 /* Alter.pl */,
+				849314B0191A649500629D01 /* Alter.pm */,
+				849314B6191A649500629D01 /* ar.xml */,
+				849314CF191A649500629D01 /* ComponentListLocEnv */,
+				849314D3191A649500629D01 /* ConductorUtilitiesCommands */,
+				849314D5191A649500629D01 /* cplproj */,
+				849314F1191A649500629D01 /* fpcx */,
+				849314FE191A649500629D01 /* IBLock */,
+				84931501191A649500629D01 /* install_loctar */,
+				84931507191A649500629D01 /* keys.plist */,
+				8493150A191A649500629D01 /* Loc.pm */,
+				84931512191A649500629D01 /* MaskNumberAndCountryInTar.pl */,
+				8493151D191A649500629D01 /* Pcx.pm */,
+				8493151E191A649500629D01 /* pcx2 */,
+				8493151F191A649500629D01 /* Pcxout.pm */,
+				84931532191A649600629D01 /* ReportChecker */,
+				84931562191A649600629D01 /* verificator */,
+			);
+			name = AALocBench;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8401600A19136C6700B942A9 /* LocTools */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8401603C19136C6700B942A9 /* Build configuration list for PBXNativeTarget "LocTools" */;
+			buildPhases = (
+				8401600719136C6700B942A9 /* Sources */,
+				8401600819136C6700B942A9 /* Frameworks */,
+				8401600919136C6700B942A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LocTools;
+			productName = LocTools;
+			productReference = 8401600B19136C6700B942A9 /* LocTools.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8401602B19136C6700B942A9 /* LocToolsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8401603F19136C6700B942A9 /* Build configuration list for PBXNativeTarget "LocToolsTests" */;
+			buildPhases = (
+				8401602819136C6700B942A9 /* Sources */,
+				8401602919136C6700B942A9 /* Frameworks */,
+				8401602A19136C6700B942A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8401603119136C6700B942A9 /* PBXTargetDependency */,
+			);
+			name = LocToolsTests;
+			productName = LocToolsTests;
+			productReference = 8401602C19136C6700B942A9 /* LocToolsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8401600319136C6700B942A9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0500;
+				ORGANIZATIONNAME = admin;
+				TargetAttributes = {
+					8401602B19136C6700B942A9 = {
+						TestTargetID = 8401600A19136C6700B942A9;
+					};
+				};
+			};
+			buildConfigurationList = 8401600619136C6700B942A9 /* Build configuration list for PBXProject "LocTools" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				English,
+			);
+			mainGroup = 8401600219136C6700B942A9;
+			productRefGroup = 8401600C19136C6700B942A9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8401600A19136C6700B942A9 /* LocTools */,
+				8401602B19136C6700B942A9 /* LocToolsTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8401600919136C6700B942A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84C560B619D2E8B100A3E9A6 /* alert.jpg in Resources */,
+				8493157F191A649600629D01 /* AAflverifierFilter in Resources */,
+				84F7528A19C2A25100E32E37 /* Temp_CheckAll.py in Resources */,
+				84F7528219C2A24700E32E37 /* Temp_Envtester.py in Resources */,
+				849315E3191A649600629D01 /* install_loctar in Resources */,
+				84F7528319C2A24700E32E37 /* Temp_LocEnv.py in Resources */,
+				84931571191A649600629D01 /* AACheckConductorLocEnv in Resources */,
+				846C8A0519AC15C7006C377D /* ComponentData.py in Resources */,
+				84931574191A649600629D01 /* AACheckLocEnv in Resources */,
+				84329BA219AF03B70016C343 /* xliffdiffer.py in Resources */,
+				84931591191A649600629D01 /* AAWinflverifier in Resources */,
+				849315E9191A649600629D01 /* keys.plist in Resources */,
+				84DD6F621A805CE800EDE3A3 /* parameterstester.py in Resources */,
+				8401601919136C6700B942A9 /* InfoPlist.strings in Resources */,
+				84F7528419C2A24700E32E37 /* Temp_Itxib.py in Resources */,
+				8493158C191A649600629D01 /* AAProcessNibScore in Resources */,
+				84931579191A649600629D01 /* AADNT in Resources */,
+				849315E0191A649600629D01 /* IBLock in Resources */,
+				84931652191A6F0A00629D01 /* MainMenu.xib in Resources */,
+				849315D3191A649600629D01 /* fpcx in Resources */,
+				845F418319D0176E00333A71 /* AALocCommand in Resources */,
+				84931580191A649600629D01 /* AAinsight2wg in Resources */,
+				84CB2BC1191CC70D007B8D15 /* notice.py in Resources */,
+				8457CC51192F320300D94999 /* bugfixcomments.py in Resources */,
+				84931590191A649600629D01 /* AAWGADUtilities.pm in Resources */,
+				843121DC192460960096048C /* Credits.rtf in Resources */,
+				84F5DA9A19152DF400A265D1 /* LocTools-Info.plist in Resources */,
+				84931613191A649600629D01 /* ReportChecker in Resources */,
+				849315EC191A649600629D01 /* Loc.pm in Resources */,
+				84931581191A649600629D01 /* AALocAppleGlotUtilities.pm in Resources */,
+				849315B5191A649600629D01 /* ComponentListLocEnv in Resources */,
+				84812A2719F7887A00D195DA /* Envtester_new.py in Resources */,
+				845D74651A845A5700E4D469 /* AALocEnvUtilities.pm in Resources */,
+				84DD6F6A1A80730600EDE3A3 /* countrySelect.plist in Resources */,
+				8401602719136C6700B942A9 /* Images.xcassets in Resources */,
+				84931576191A649600629D01 /* AACheckProblemNibs in Resources */,
+				84931573191A649600629D01 /* AACheckLKCX in Resources */,
+				841F57A4191BA31A0002A145 /* firstopen.py in Resources */,
+				848B2A931A80AC170037DAB8 /* PCXPlugins.py in Resources */,
+				84F7528B19C2A25100E32E37 /* Temp_CheckTar.py in Resources */,
+				849315BB191A649600629D01 /* cplproj in Resources */,
+				8451C0ED1A44097B0052C577 /* xliffdiffer_lite.py in Resources */,
+				8432B5F019B566CB00C8B7EE /* AAflverifier in Resources */,
+				84931575191A649600629D01 /* AACheckNotTranslatedString in Resources */,
+				847D4AD819D954A9003EB7FF /* client.py in Resources */,
+				8493158B191A649600629D01 /* AANibImageRiper in Resources */,
+				84931578191A649600629D01 /* AAcompare_strings in Resources */,
+				8462917C19D194BF00A0BA38 /* finaltest.py in Resources */,
+				846C8A0319AC15C2006C377D /* Envtester.py in Resources */,
+				84580C5519D39E8E00D059AE /* clearFolder.sh in Resources */,
+				8433121C1A43F47200A03876 /* makeautoFtp_plus.pl in Resources */,
+				84931572191A649600629D01 /* AACheckGlotEnv in Resources */,
+				8493158A191A649600629D01 /* AAMergeGlossaries in Resources */,
+				8493159C191A649600629D01 /* ar.xml in Resources */,
+				8493157A191A649600629D01 /* AAExpandPackage in Resources */,
+				84F7528C19C2A25100E32E37 /* Temp_AutoFtp.py in Resources */,
+				841E281419D6591F007908F8 /* iTunes_itxib_tool.pl in Resources */,
+				8405BADA191715D60018D504 /* App.icns in Resources */,
+				8493157B191A649600629D01 /* AAExpandTarballs in Resources */,
+				8477D01619C02E3B00DDA707 /* OtherTools.xib in Resources */,
+				8493158D191A649600629D01 /* AAProcessNonGlotableFiles in Resources */,
+				8493158E191A649600629D01 /* AASplitLocKit in Resources */,
+				84931601191A649600629D01 /* Pcxout.pm in Resources */,
+				8493158F191A649600629D01 /* AAURLs in Resources */,
+				84C560B419D2654900A3E9A6 /* autoFtp.py in Resources */,
+				849315B9191A649600629D01 /* ConductorUtilitiesCommands in Resources */,
+				84580C5819D3AB2300D059AE /* createCompareFolder.sh in Resources */,
+				84931600191A649600629D01 /* pcx2 in Resources */,
+				84931588191A649600629D01 /* AALocFileUtilities.pm in Resources */,
+				8493157C191A649600629D01 /* AAExtractAttributedStrings in Resources */,
+				84429E6F19E7B88A007BAD81 /* xliffState.py in Resources */,
+				84931595191A649600629D01 /* Alter.pl in Resources */,
+				84931596191A649600629D01 /* Alter.pm in Resources */,
+				845F418119D0176E00333A71 /* AAflverifier_Pro in Resources */,
+				845F417C19D0131A00333A71 /* Temp_CheckAllPro.py in Resources */,
+				8493157D191A649600629D01 /* AAExtractNib in Resources */,
+				84580C5619D39E8E00D059AE /* createFolder.sh in Resources */,
+				84931643191A649600629D01 /* verificator in Resources */,
+				84931592191A649600629D01 /* AAXliffUtilities.pm in Resources */,
+				840115A31AA35AE100CB606A /* findIDAndRect.py in Resources */,
+				84370E6B19D43C4800D65F17 /* printXcodePath.sh in Resources */,
+				84DD6F681A805D3B00EDE3A3 /* ProAppDitto.py in Resources */,
+				84370E6519D3FB0900D65F17 /* iTunes_itxib_tool.py in Resources */,
+				84931577191A649600629D01 /* AACleanupTier3NewLoc in Resources */,
+				84DD6F661A805D1400EDE3A3 /* ScanReports.py in Resources */,
+				84931570191A649600629D01 /* AAad2insight in Resources */,
+				845F418219D0176E00333A71 /* AAflverifierFilter_Pro in Resources */,
+				849315F4191A649600629D01 /* MaskNumberAndCountryInTar.pl in Resources */,
+				849315FF191A649600629D01 /* Pcx.pm in Resources */,
+				84370E6919D42FBB00D65F17 /* AALocCommand_Org in Resources */,
+				8432B5F119B566CB00C8B7EE /* AALocUtilities.pm in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8401602A19136C6700B942A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8401603719136C6700B942A9 /* InfoPlist.strings in Resources */,
+				843121DD192460960096048C /* Credits.rtf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8401600719136C6700B942A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8401601B19136C6700B942A9 /* main.m in Sources */,
+				8477D01519C02E3B00DDA707 /* OtherTools.m in Sources */,
+				8401602219136C6700B942A9 /* AppDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8401602819136C6700B942A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8401603919136C6700B942A9 /* LocToolsTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8401603119136C6700B942A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8401600A19136C6700B942A9 /* LocTools */;
+			targetProxy = 8401603019136C6700B942A9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		8401601719136C6700B942A9 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				8401601819136C6700B942A9 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		8401603519136C6700B942A9 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				8401603619136C6700B942A9 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		8401603A19136C6700B942A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		8401603B19136C6700B942A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		8401603D19136C6700B942A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "LocTools/LocTools-Prefix.pch";
+				INFOPLIST_FILE = "LocTools/LocTools-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		8401603E19136C6700B942A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "LocTools/LocTools-Prefix.pch";
+				INFOPLIST_FILE = "LocTools/LocTools-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		8401604019136C6700B942A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/LocTools.app/Contents/MacOS/LocTools";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "LocTools/LocTools-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "LocToolsTests/LocToolsTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Debug;
+		};
+		8401604119136C6700B942A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/LocTools.app/Contents/MacOS/LocTools";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "LocTools/LocTools-Prefix.pch";
+				INFOPLIST_FILE = "LocToolsTests/LocToolsTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8401600619136C6700B942A9 /* Build configuration list for PBXProject "LocTools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8401603A19136C6700B942A9 /* Debug */,
+				8401603B19136C6700B942A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8401603C19136C6700B942A9 /* Build configuration list for PBXNativeTarget "LocTools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8401603D19136C6700B942A9 /* Debug */,
+				8401603E19136C6700B942A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8401603F19136C6700B942A9 /* Build configuration list for PBXNativeTarget "LocToolsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8401604019136C6700B942A9 /* Debug */,
+				8401604119136C6700B942A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8401600319136C6700B942A9 /* Project object */;
+}

@@ -1,0 +1,2761 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AALocCommand
+##     File Name:	AAflverifier
+##        Author:	Stanley Au-Yeung
+##          Date:	Saturday, September 24, 2005
+##
+##   Description:	What it does...
+##
+##                       Copyright Apple Computer Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	11/12/15	12:00	SA		version 1.1.1
+##	11/12/15	12:00	SA		removed all ibplugin
+##	09/07/09	12:00	SA		version 1.1
+##	09/07/09	12:00	SA		Use gIBPlugsPcxOptions for ibplugs and added Automator.ibplugin, QuicktimeKitUIPlugin, /Developer/Plugins/ServerKit.ibplugin
+##	09/03/09	12:00	SA		version 1.0.9
+##	09/03/09	12:00	SA		Modified pcx2 and fpcx path
+##	02/05/09	12:00	SA		version 1.0.8
+##	02/05/09	12:00	SA		Added /AppleInternal/Developer/Plugins/ProKit.ibplugin
+##	05/20/08	22:00	SA		version 1.0.7
+##	05/20/08	22:00	SA		Skip comparision of nib attributes "frameAutosaveName"
+##	08/18/07	00:30	SA		version 1.0.6
+##	08/18/07	00:30	SA		Fixed a bug of -ib_plugin path
+##	08/16/07	09:30	SA		version 1.0.5
+##	08/16/07	09:30	SA		Added -ib_plugin
+##	07/28/07	18:00	SA		version 1.0.4
+##	07/28/07	18:00	SA		Skip comparision of nib attributes "editorWindowContentRectSynchronizationRect"
+##	02/15/07	23:00	SA		version 1.0.3
+##	02/15/07	23:00	SA		Added default checksum (0)
+##	02/13/07	14:00	SA		Skip comparision of nib attributes "NSProSegmentItem"
+##	02/13/07	14:00	SA		Skip comparision of nib attributes "NSProTextFieldCell"
+##	02/12/07	00:30	SA		version 1.0.2
+##	02/12/07	08:30	SA		-sktiff Skip tiff file contents comparison.
+##	01/27/07	10:00	SA		version 1.0.1
+##	01/27/07	08:00	SA		Skip comparision of nib attributes "NSSegmentItem"
+##	08/18/06	10:00	SA		version 1.0
+##	08/18/06	10:00	SA		Added -getVersion
+##	10/24/05	15:00	SA		Skip comparision of nib attributes "groupedIBObjectID"
+##	09/30/05	01:00	SA		Skip comparision of nib attributes "layoutInfoCopy"
+##	09/24/05	12:00	SA		Modified from Kenji's flverifier
+##								Skip comparision of nib attributes "datacell"
+##*****************************************************************************
+
+
+
+#####################################################################################################
+#	$Id: flverifier,v 1.3 2005/01/20 18:23:02 asaka1 Exp $
+#		Verify localized component (-v)
+#		Generate a report about how to sync up with new US (-q)
+#	
+#	Created by kenji on Fri Mar 26 2002.
+#	Copyright (c) 2002 Apple Computer Inc. All rights reserved.
+#####################################################################################################
+
+
+BEGIN
+{
+    # Add Evolution/LocEnv/locbin to @INC
+    push(@INC, "/Developer/Evolution/LocEnv/locbin");
+}
+
+
+use FindBin;
+use File::Find;
+use lib $FindBin::Bin;
+use Pcxout 1.01;
+use	Pcx 1.01;
+use utf8;
+no warnings;
+
+
+($scriptName = $0) =~ s|(.+)/([^/]+)$|$2|;
+my $scriptFullPath = $0;
+
+my $bbeditShellRezScript = $scriptFullPath;
+$bbeditShellRezScript =~ s/AAflverifier$/bbedit_tcsh.r/; 
+
+
+#**********************************************
+#	constants
+#
+#**********************************************
+use constant OB_NB => '"_OldBase vs _NewBase"';
+use constant OL_NL => '"_OldLoc vs _NewLoc"';
+use constant OB_OL => '"_OldBase vs _OldLoc"';
+use constant NB_NL => '"_NewBase vs _NewLoc"';
+
+
+#**********************************************
+#	globals
+#
+#**********************************************
+$gMode = "verify";
+$gBaseLanguage = "English";
+$gLocLanguage = "";
+$gFilter = "verify";
+$gEditor = "stdout";
+
+$gOB_NB = "OBNB";
+$gOL_NL = "OLNL";
+$gOutfile = "";
+%gFindResult = ();
+$gDebug = 0;
+$gPrintIdentical = 0;
+$gOpenOutputfile = 0;
+$gOpenCompResult = 0;
+$gSerialNumber = 1;
+%gFilePairs = ();
+%gFilePairsReverse = ();
+%gDirectoryPairs = ();
+%gDirectoryPairsReverse = ();
+$gMapDirectory = 0;
+$gMapFile = 0;	   
+@gOtherPcxOptions = ();
+@gIBPlugsPcxOptions = ();
+$gCompResult_OBNB = "";
+$gCompResult_OLNL = "";
+$gDontFormatCompResult = 0;
+$gDontListIdenticalInCompResult = 0;
+
+# SA	$gPcxPath = `which pcx`;
+# SA	chomp $gPcxPath;
+
+# Figure out pcx and fpcx paths.
+$gPcxPath = '/usr/local/cbl/bin/pcx2';
+$gFpcxPath = '/usr/local/cbl/bin/fpcx';
+unless ( -e $gPcxPath ) {
+    $gPcxPath = `which pcx`;
+    chomp $gPcxPath;
+
+    $gFpcxPath = 'fpcx';
+}
+
+
+#**********************************************
+#	Parse parameters
+#
+#**********************************************
+my $glot = "";
+my %glotDirs = ();
+my %compDirs = ();
+
+unless (@ARGV > 1)
+{
+	if ($ARGV[0] eq "-getVersion")
+	{
+		print "1.1.1";
+		exit 1;
+	}
+	else
+	{
+		&usage;
+	}
+}
+
+
+while (@ARGV)
+{
+	my $keyValueArg = "-glot|-newb|-newl|-oldb|-oldl|-nbc|-nlc|-obc|-olc|-pcx|-loc|-filter|-env|-outfile|-filePairs|-directoryPairs";
+
+	$_ = shift;
+
+	if (/^($keyValueArg)/i)
+	{
+		unless (@ARGV > 0)
+		{
+			printf STDERR "### verifier error: Value must follow $_.\n";
+			exit 1;
+		}
+		
+		my $arg = shift;
+		
+		if (/^-glot/i)
+		{
+			$glot = $arg;
+		}
+		elsif (/^-newb/i)
+		{
+			$glotDirs{"newbase"} = $arg;
+		}
+		elsif (/^-newl/i)
+		{
+			$glotDirs{"newloc"} = $arg;
+		}
+		elsif (/^-oldb/i)
+		{
+			$glotDirs{"oldbase"} = $arg;
+		}
+		elsif (/^-oldl/i)
+		{
+			$glotDirs{"oldloc"} = $arg;
+		}
+		elsif (/^-nbc/i)
+		{
+			$compDirs{"newbase"} = $arg;
+		}
+		elsif (/^-nlc/i)
+		{
+			$compDirs{"newloc"} = $arg;
+		}
+		elsif (/^-obc/i)
+		{
+			$compDirs{"oldbase"} = $arg;
+		}
+		elsif (/^-olc/i)
+		{
+			$compDirs{"oldloc"} = $arg;
+		}
+		elsif (/^-pcx/i)
+		{
+			$gPcxPath = $arg;
+		}
+		elsif (/^-loc/i)
+		{
+			$gLocLanguage = $arg;
+		}
+		elsif (/^-filter/i)
+		{
+			$gFilter = $arg;
+		}
+		elsif (/^-env/i)
+		{
+			$env = $arg;
+		}
+		elsif (/^-outfile/i)
+		{
+			$gOutfile = $arg;
+			$gOutfile  =~ s/^~/$ENV{HOME}/;	# Expand ~
+		}
+		elsif (/^-filePairs/i)
+		{
+			parseSlashSeparateGlossary($arg, \%gFilePairs, "file");
+		}
+		elsif (/^-directoryPairs/i)
+		{
+			parseSlashSeparateGlossary($arg, \%gDirectoryPairs, "dir");
+		}
+	}
+	elsif (/^-d$/i)
+	{
+		$gDebug = 1;
+	}
+	elsif (/^-stdout/i)
+	{
+		$gEditor = "stdout";
+	}
+	elsif (/^-adview/i)
+	{
+		$gEditor = "adview";
+	}
+	elsif (/^-bbedit/i)
+	{
+		$gEditor = "bbedit";
+	}
+	elsif (/^-fAllRect/i)
+	{
+		$filterOutAllFrameRect = 1;
+	}
+	elsif (/^-open$/i)
+	{
+		$gOpenOutputfile = 1;
+	}
+	elsif (/^-openCompResult$/i)
+	{
+		$gOpenCompResult = 1;
+	}
+	elsif (/^-dontFormatCompResult$/i)
+	{
+		$gDontFormatCompResult = 1;
+	}
+	elsif (/^-dontListIdenticalInCompResult$/i)
+	{
+		$gDontListIdenticalInCompResult = 1;
+	}
+	elsif (/^-mapDirectory/i)
+	{
+		$gMapDirectory = 1;
+	}
+	elsif (/^-mapFile/i)
+	{
+		$gMapFile = 1;	   
+	}
+	else
+	{
+		printf STDERR "### verifier error: Sorry, I don't know this option ($_)\n";
+		exit 1;
+	}
+
+}
+
+if ("$filterOutAllFrameRect")
+{
+	#0 $filter{"subdir"} = 0;
+	#8 $filter{"files_in_nibdir"} = 1;
+	#9 $filter{"nibs_in_dir_summary"} = 1;
+	#12 $filter{"dir_details"} = 1;
+	#15 $filter{"finfo_cdate"} = 1;
+	#16 $filter{"finfo_mdate"} = 1;
+	#17 $filter{"finfo_unix"} = 1;
+	#30 => "nib_obj_frameRect",
+	#31 => "nib_obj_contentRect",
+	#40 $filter{"res_padding"} = 1;
+	#54 $filter{"finfo_type"} = 1;
+	#55 $filter{"finfo_creator"} = 1;
+	#56 $filter{"finfo_flags"} = 1;
+	#57 $filter{"finfo_ioFlAttrib"} = 1;
+	#58 $filter{"finfo_script"} = 1;
+	#68 => $filter{"nib_obj_Name} = 1",
+	$gFilter = "0x80C9C003008002E008";
+}
+
+
+# Check to see if file name mapping should be applied.
+if ($gMapFile && ((scalar %gFilePairs) > 0))
+{
+	$gMapFile = 1;
+}
+else
+{
+	$gMapFile = 0;
+}
+
+# Check to see if directory name mapping should be applied.
+if ($gMapDirectory && ((scalar %gDirectoryPairs) > 0))
+{
+	$gMapDirectory = 1;
+}
+else
+{
+	$gMapDirectory = 0;
+}
+
+# Output file must be specified if a editor is BBEdit or AD Viewer.		
+if (($gEditor eq "adview") || (($gEditor eq "bbedit")))
+{
+	unless ($gOutfile)
+	{
+		printf STDERR "### verifier error: You must specify -outfile path_to_output_file.\n";
+		exit 1;
+	}
+}
+
+unless ("$gPcxPath")
+{
+	# printf STDERR "### verifier error: You must specify -pcx path_to_pcx unless pcx is in one of \$path directories.\n";
+	# exit 1;
+	
+	$gPcxPath = "pcx";
+}
+
+# Define output device
+if ($gEditor ne "stdout")
+{
+	$OUT = "VERIFYREPORT";
+	open ($OUT, ">$gOutfile") || die "### [$scriptName] Errror: Could not open $gOutfile.\n";
+
+	# Determin the file name for compare result
+	if ($gOutfile =~ m/^(.+)\.(.+)$/)
+	{
+		$gCompResult_OBNB = $1 . '_OB<->NB.' . $2;
+		$gCompResult_OLNL = $1 . '_OL<->NL.' . $2;
+	}
+	else
+	{
+		$gCompResult_OBNB = $gOutfile . '_OB<->NB.txt';
+		$gCompResult_OLNL = $gOutfile . '_OL<->NL.txt';
+	}
+	
+	open ($gOB_NB, ">$gCompResult_OBNB") || die "### [$scriptName] Errror: Could not open $gCompResult_OBNB.\n";
+	open ($gOL_NL, ">$gCompResult_OLNL") || die "### [$scriptName] Errror: Could not open $gCompResult_OLNL.\n";
+}
+else
+{
+	$OUT = "STDOUT";
+}
+
+
+
+if ($glot)
+{
+	unless ($gLocLanguage)
+	{
+		$gLocLanguage = getLocLanguage($glot . "/_NewLoc");
+	}
+	
+	preworkForCrosscomp1($glot);
+}
+elsif ((exists $glotDirs{"newbase"}) && (exists $glotDirs{"newloc"}))
+{
+	unless ($gLocLanguage)
+	{
+		$gLocLanguage = getLocLanguage($glotDirs{"newloc"});
+	}
+	
+	preworkForCrosscomp2(\%glotDirs);
+}
+elsif ((exists $compDirs{"newbase"}) && (exists $compDirs{"newloc"}))
+{
+	unless ($gLocLanguage)
+	{
+		$gLocLanguage = getLocLanguage($compDirs{"newloc"});
+	}
+	
+	crosscomp(\%compDirs);
+}
+else
+{
+	printf STDERR "### verifier error: You must specify -glot, -newb/-newl[/-oldb/-oldl] or -nbc/-nlc[/-obc/-olc]\n";
+	exit 1;
+}
+
+
+
+#------------------------------------------------------------------------
+# Open the output shell script
+#------------------------------------------------------------------------
+if ($gEditor eq "bbedit")
+{
+	close $OUT;
+	close $gOB_NB;
+	close $gOL_NL;
+	
+	foreach ("$gOutfile", "$gCompResult_OBNB", "$gCompResult_OLNL")
+	{
+		`/Developer/Tools/SetFile -c "R*ch" "$_"`;
+		`/Developer/Tools/SetFile -t "Shel" "$_"`;
+		`/Developer/Tools/Rez -a -m  -o "$_" "$bbeditShellRezScript" >& /dev/null`;
+	}
+	
+	if ($gOpenOutputfile)
+	{
+		`bbedit --encoding "utf-8" "$gOutfile"`;
+	}
+	
+	if ($gOpenCompResult)
+	{
+		`bbedit --encoding "utf-8" "$gCompResult_OBNB"`;
+		`bbedit --encoding "utf-8" "$gCompResult_OLNL"`;
+	}
+   
+}
+elsif ($gEditor eq "adview")
+{
+	close $OUT;
+	close $gOB_NB;
+	close $gOL_NL;
+	
+	if ($gOpenOutputfile)
+	{
+		`open -a "AD Viewer.app" "$gOutfile"`;
+	}
+	
+	if ($gOpenCompResult)
+	{
+		`open -a "AD Viewer.app" "$gCompResult_OBNB"`;
+		`open -a "AD Viewer.app" "$gCompResult_OLNL"`;
+	}
+}
+
+
+#--------------------------
+# Exit
+#--------------------------
+exit 0;
+
+
+
+
+sub usage
+{
+	print "Usage: AAflverifier -glot glot_directory glot_directory_path -loc YOUR_LANGUAGE [-stdout|-adview|-bbedit] [-open] [-outfile output_file_path] [-dontFormatCompResult] [-dontListIdenticalInCompResult]\n";
+	print "Example-1: AAflverifier -glot ~/glot_env -loc Japanese -outfile ~/out.txt -open -bbedit\n";
+	print "Example-2: AAflverifier -glot ~/glot_env -loc Japanese -outfile ~/out.txt -open -adview\n";
+	print "Example-3: AAflverifier -glot ~/glot_env -loc Japanese\n";
+	exit 1;
+}
+
+
+
+
+#************************************************************
+# User specified -glot
+#
+#
+#
+#************************************************************
+sub preworkForCrosscomp1
+{
+	my $glot = shift;
+	my %glotDirs = ();
+	my $ob_nb_comp_result = undef;
+	my $ol_nl_comp_result = undef;
+
+	$glotDirs{"newbase"} = $glot . "/_NewBase";
+	$glotDirs{"newloc"} = $glot . "/_NewLoc";
+	$glotDirs{"oldbase"} = $glot . "/_OldBase";
+	$glotDirs{"oldloc"} = $glot . "/_OldLoc";
+
+	if (-e "/System/Library/Frameworks/AddressBook.framework/Versions/A/Resources/AddressBookIBPlugin.ibplugin")
+	{
+		if (-e "/AppleInternal/Developer/Plugins/ProKit.ibplugin")
+		{
+			push (@gIBPlugsPcxOptions, '-ib_plugin "/System/Library/Frameworks/AddressBook.framework/Versions/A/Resources/AddressBookIBPlugin.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/Automator.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/AutomatorPalette.ibplugin:/System/Library/Frameworks/DiscRecordingUI.framework/Versions/A/Resources/DiscRecordingPlugin.ibplugin:/System/Library/Frameworks/OSAKit.framework/Versions/A/Resources/OSAIBPlugin.ibplugin:/System/Library/Frameworks/QTKit.framework/Versions/A/Resources/QTKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/ImageKit.framework/Versions/A/Resources/ImageKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/PDFKit.framework/Versions/A/Resources/PDFKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/QuartzComposer.framework/Versions/A/Resources/QuartzComposer.ibplugin:/System/Library/PrivateFrameworks/Assistant.framework/Versions/A/Resources/Assistant Plugin.ibplugin:/AppleInternal/Developer/Plugins/QuicktimeKitUIPlugin.ibplugin:/Developer/Plugins/ServerKit.ibplugin:/AppleInternal/Developer/Plugins/ProKit.ibplugin" ');
+		}
+		else
+		{
+			push (@gIBPlugsPcxOptions, '-ib_plugin "/System/Library/Frameworks/AddressBook.framework/Versions/A/Resources/AddressBookIBPlugin.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/Automator.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/AutomatorPalette.ibplugin:/System/Library/Frameworks/DiscRecordingUI.framework/Versions/A/Resources/DiscRecordingPlugin.ibplugin:/System/Library/Frameworks/OSAKit.framework/Versions/A/Resources/OSAIBPlugin.ibplugin:/System/Library/Frameworks/QTKit.framework/Versions/A/Resources/QTKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/ImageKit.framework/Versions/A/Resources/ImageKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/PDFKit.framework/Versions/A/Resources/PDFKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/QuartzComposer.framework/Versions/A/Resources/QuartzComposer.ibplugin:/System/Library/PrivateFrameworks/Assistant.framework/Versions/A/Resources/Assistant Plugin.ibplugin:/AppleInternal/Developer/Plugins/QuicktimeKitUIPlugin.ibplugin:/Developer/Plugins/ServerKit.ibplugin" ');
+		}
+	}
+	
+	preworkForCrosscomp2(\%glotDirs);
+
+	# It seems that a localizer wants to check full compare result.
+	my @pcxOptions = ('-ski', '-frmap', '-cache1');	
+	my @fpcxOptions = ();
+
+	unless ($gDontListIdenticalInCompResult) {push (@pcxOptions, '-i')};
+
+	if ($gEditor ne "bbedit") {push (@fpcxOptions, "-adviewer")};	
+
+	if ($gCompResult_OBNB && $gCompResult_OLNL)
+	{
+		# asaka
+		unless ($gDontFormatCompResult)
+		{
+			$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions  -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
+		}
+		else
+		{
+			$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
+		}
+		print $gOB_NB $ob_nb_comp_result;
+
+		unless ($gDontFormatCompResult)
+		{
+			$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
+		}
+		else
+		{
+			$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
+		}
+		
+		print $gOL_NL $ol_nl_comp_result;
+	} 
+}
+
+
+
+#************************************************************
+# User specified -newb/-newl/-oldb/-oldl
+#
+#
+#
+#************************************************************
+sub preworkForCrosscomp2
+{
+	my $glotDirsRef = shift;
+	my %compDirs = ();
+
+	if (opendir (NEWBASE, $glotDirsRef->{"newbase"}))
+	{
+#		chdir $glotDirsRef->{"newbase"};
+		while (defined ($file = readdir NEWBASE))
+		{
+			next if ($file =~ m/^\./);
+			
+			if (-d "$glotDirsRef->{newbase}/$file")
+			{
+				if (-e "$glotDirsRef->{newloc}/$file")
+				{
+					$compDirs{"newbase"} = "$glotDirsRef->{newbase}/$file";
+					$compDirs{"newloc"} = "$glotDirsRef->{newloc}/$file";
+					$compDirs{"oldbase"} = "$glotDirsRef->{oldbase}/$file";
+					$compDirs{"oldloc"} = "$glotDirsRef->{oldloc}/$file";
+					
+					crosscomp(\%compDirs);
+				}
+			}
+		}
+		
+		closedir NEWBASE;
+	}
+	else
+	{
+		printf STDERR "### verifier error: Can't open directory $glotDirsRef->{newbase}\n";
+		exit 1;
+	}
+
+}
+
+
+
+#************************************************************
+#	get all .lprojs in the specified directory
+#
+#
+#
+#************************************************************
+sub getLprojs
+{
+	my ($path, $loc) = @_;
+	my %lprojs = ();
+	
+	%gFindResult = ();
+	find \&setLproj, $path;
+	
+	foreach (@{$gFindResult{"$loc.lproj"}})
+	{
+		# Directory hierachy created by locuntar changed 4/3/2002.
+		# m/^$path\/([^\/]*)\/(.*)$/;
+		# $lprojs{$2} = "$_/$loc.lproj";
+		m/^$path\/(.*)$/;
+		$lprojs{$1} = "$_/$loc.lproj";
+	}
+	if($loc eq "English")
+	{
+		foreach (@{$gFindResult{"en.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/en.lproj";
+			printf STDERR "en 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "Japanese")
+	{
+		foreach (@{$gFindResult{"ja.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/ja.lproj";
+			printf STDERR "ja 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "German")
+	{
+		foreach (@{$gFindResult{"de.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/de.lproj";
+			printf STDERR "de 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "Italian")
+	{
+		foreach (@{$gFindResult{"it.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/it.lproj";
+			printf STDERR "it 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "Spanish")
+	{
+		foreach (@{$gFindResult{"es.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/es.lproj";
+			printf STDERR "es 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "French")
+	{
+		foreach (@{$gFindResult{"fr.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/fr.lproj";
+			printf STDERR "fr 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	if($loc eq "no")
+	{
+		foreach (@{$gFindResult{"nb.lproj"}})
+		{
+			# Directory hierachy created by locuntar changed 4/3/2002.
+			# m/^$path\/([^\/]*)\/(.*)$/;
+			# $lprojs{$2} = "$_/$loc.lproj";
+			m/^$path\/(.*)$/;
+			$lprojs{$1} = "$_/nb.lproj";
+			printf STDERR "nb 补丁生效!!!!!!!!!!!!!!\n";
+			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+		}
+	}
+	return \%lprojs;
+}
+
+sub setLproj
+{
+	push (@{$gFindResult{$_}}, $File::Find::dir);
+}
+
+
+
+#************************************************************
+#	get localized lproj name from the specified directory
+#
+#
+#
+#************************************************************
+sub getLocLanguage
+{
+	my $inDir = shift;
+	my %lprojs = ();
+	
+	%gFindResult = ();
+	find \&setLocLproj, $inDir;
+	
+	unless (scalar %gFindResult)
+	{
+		printf STDERR "### verifier error: No localized .lproj in $inDir.\n";
+		exit 1;
+	}
+	
+	my @tmp = sort {$gFindResult{$a} <=> $gFindResult{$b}} keys %gFindResult;
+	return $tmp[$#array];
+}
+
+sub setLocLproj
+{
+	if (m/(.+).lproj$/ && ($1 ne "English"))
+	{
+		$gFindResult{$1}++;
+	}
+}
+
+
+
+#************************************************************************************************************
+# User specified -newb/-newl/-oldb/-oldl
+#	Perform cross compare with pcx
+#
+#
+#************************************************************************************************************
+sub crosscomp
+{
+	my $dirRef = shift;
+	my %verifyResult = ();
+	
+	my $targetProjectName = &lastComponent($dirRef->{'newbase'});
+
+	printf $OUT ("\n\n##########################################################################################################\n");
+	printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a component [%03d]: %s\t[0]\n", $gSerialNumber++, $targetProjectName);
+	printf $OUT ("##########################################################################################################\n");
+
+	#------------------------------------------------------------------------------------------------
+	# Missing and extra item check
+	#
+	#------------------------------------------------------------------------------------------------
+	# This can be done by comparing newLoc with newBase and grep "new/obsolete" pcx output messages.
+	if ($dirRef->{"newbase"} && $dirRef->{"newloc"})
+	{
+		# This is to obtain file name matching information by pcx's -mapfByGuess option.
+		my $flleMappingMetaInfo = `$gPcxPath "$dirRef->{'newbase'}" "$dirRef->{'newloc'}" -frmap -cache1 -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -ski -map "$gBaseLanguage.lproj/$gLocLanguage.lproj" -mapfByGuess -q @gOtherPcxOptions | perl -ne 'print if (m/pcx:m:mapping:file:guess:/)' | $gFpcxPath -s`;
+		# print $flleMappingMetaInfo;
+		&ObtainFileNameMappingInfoFromPcxOutput($flleMappingMetaInfo, \@gOtherPcxOptions);
+
+		
+		# This is the pcx command carrying out actual comparison.   
+		my @fpcxOptions = ();
+		if ($gEditor ne "bbedit") {push (@fpcxOptions, "-adviewer")};
+
+		my $newbase_newloc = `$gPcxPath "$dirRef->{'newbase'}" "$dirRef->{'newloc'}" -frmap -cache1 -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist -ski -objinfo -automapEnToLoc @gOtherPcxOptions -inclnibattr "m/(title|string|text|label|marker|name|identifier)/i;" | perl -ne 'print if (m/pcx:i:(new|obsolete):/)' | $gFpcxPath -s -purl @fpcxOptions`;
+
+		if ($newbase_newloc =~ m/\S/s)
+		{
+			print $OUT "*** FocusedLocVerifier Warning: MIssing or Extra item(s) in NL.\n";
+			print $OUT $newbase_newloc;
+			
+			#SA
+			print STDERR $newbase_newloc;
+		}	   
+	}
+ 
+	#------------------------------------------------------------------------------------------------
+	# Verification by comparing compare result of (OB vs NB) and (OL vs NL).
+	#
+	#------------------------------------------------------------------------------------------------
+	if ($gDebug)
+	{
+		print $OUT $dirRef->{"newbase"}, "\n";
+		print $OUT $dirRef->{"newloc"}, "\n";
+		print $OUT $dirRef->{"oldbase"}, "\n";
+		print $OUT $dirRef->{"oldloc"}, "\n";
+	}
+	
+	$verifyResult{"projectName"} =  $targetProjectName; 
+	$verifyResult{"newbase"} =  $dirRef->{"newbase"}; 
+	$verifyResult{"newloc"} =  $dirRef->{"newloc"}; 
+	$verifyResult{"oldbase"} =  $dirRef->{"oldbase"}; 
+	$verifyResult{"oldloc"} =  $dirRef->{"oldloc"}; 
+   
+	# Get base .lproj in newbase
+	my $newbaseLprojRef = getLprojs($dirRef->{"newbase"}, $gBaseLanguage);
+
+	# Get loc .lproj in newloc
+	my $newlocLprojRef = getLprojs($dirRef->{"newloc"}, $gLocLanguage);
+		
+	# Get base .lproj in oldbase
+	my $oldbaseLprojRef = getLprojs($dirRef->{"oldbase"}, $gBaseLanguage);
+
+	# Get loc .lproj in oldloc
+	my $oldlocLprojRef = getLprojs($dirRef->{"oldloc"}, $gLocLanguage);
+	
+	my $oldbaseLprojExist = "";
+	my $newbaseLprojExist = "";
+	my $oldlocLprojExist = "";
+	my $newlocLprojExist = "";
+	
+
+	foreach my $resourcesDir (sort keys %{$newbaseLprojRef})
+	{   
+		next if ($oldbaseLprojRef->{$resourcesDir} eq "");
+		next if ($newbaseLprojRef->{$resourcesDir} eq "");
+		next if ($oldlocLprojRef->{$resourcesDir} eq "");
+		next if ($newlocLprojRef->{$resourcesDir} eq "");
+
+		# Check to see if all dirctories exist.
+		if (-e "$oldbaseLprojRef->{$resourcesDir}") { $oldbaseLprojExist = 1; };
+		if (-e "$newbaseLprojRef->{$resourcesDir}") { $newbaseLprojExist = 1; };
+		if (-e "$oldlocLprojRef->{$resourcesDir}")  { $oldlocLprojExist = 1; };
+		if (-e "$newlocLprojRef->{$resourcesDir}")  { $newlocLprojExist = 1; };
+		
+		my $verifyLprojResultRef = {"newbase" => "$newbaseLprojRef->{$resourcesDir}", 
+									"newloc"  => "$newlocLprojRef->{$resourcesDir}", 
+									"oldbase" => "$oldbaseLprojRef->{$resourcesDir}", 
+									"oldloc"  => "$oldlocLprojRef->{$resourcesDir}", 
+									"newbaseLprojExist"  => $newbaseLprojExist, 
+									"newlocLprojExist"   => $newlocLprojExist, 
+									"oldbaseLprojExist"  => $oldbaseLprojExist, 
+									"oldlocLprojExist"   => $oldlocLprojExist, 
+									};
+		push (@{$verifyResult{"verify_results"}}, $verifyLprojResultRef);
+		
+		if ($oldbaseLprojExist && $newbaseLprojExist && $oldlocLprojExist && $newlocLprojExist)
+		{
+			#------------------------------------------------------------------------------------------------
+			# Compaare oldbase vs newbase
+			#
+			#------------------------------------------------------------------------------------------------
+			if ($gDebug)
+			{
+				print $OUT "### debug:", $resourcesDir, "\n";
+				print $OUT "### debug:", $oldbaseLprojRef->{$resourcesDir}, "\n";
+				print $OUT "### debug:", $newbaseLprojRef->{$resourcesDir}, "\n";
+			}
+			
+			my @oldbase_newbase = `$gPcxPath "$oldbaseLprojRef->{$resourcesDir}" "$newbaseLprojRef->{$resourcesDir}" -sh -i -frmap -cache1 -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist -ski | perl -ne 'print unless (m/^# \\[pcx:i:unknown:file:diff:/)'`;
+			grep (utf8::decode($_), @oldbase_newbase);
+			
+			# Translate file/directory name
+			&substituteUSnameWithLOCname(\@oldbase_newbase);
+			
+			&Parse_pcxout(\@oldbase_newbase, $gFilter);
+			my @pcx_error_ob_nb = @pcx_error;
+			my @pcx_warning_ob_nb = @pcx_warning;
+			my @pcx_details_ob_nb = @pcx_details;
+			my %pcx_summary_file_ob_nb = %pcx_summary_file;
+			my %pcx_summary_dir_ob_nb = %pcx_summary_dir;
+			my %pcx_summary_nib_ob_nb = %pcx_summary_nib;
+			my $objRef1 = makeObjectIndexTable(\@pcx_details_ob_nb);
+			
+				
+							
+			#------------------------------------------------------------------------------------------------
+			# Compaare oldloc vs newloc		
+			#
+			#------------------------------------------------------------------------------------------------
+			if ($gDebug)
+			{
+				print $OUT "### debug:", $oldlocLprojRef->{$resourcesDir}, "\n";
+				print $OUT "### debug:", $newlocLprojRef->{$resourcesDir}, "\n";
+			}
+			
+			my @oldloc_newloc = `$gPcxPath "$oldlocLprojRef->{$resourcesDir}" "$newlocLprojRef->{$resourcesDir}" -sh -i -frmap -cache1 -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist -ski | perl -ne 'print unless (m/^# \\[pcx:i:unknown:file:diff:/)'`;
+			grep (utf8::decode($_), @oldloc_newloc);
+
+
+			&Parse_pcxout(\@oldloc_newloc, $gFilter);
+			my @pcx_error_ol_nl = @pcx_error;
+			my @pcx_warning_ol_nl = @pcx_warning;
+			my @pcx_details_ol_nl = @pcx_details;
+			my %pcx_summary_file_ol_nl = %pcx_summary_file;
+			my %pcx_summary_dir_ol_nl = %pcx_summary_dir;
+			my %pcx_summary_nib_ol_nl = %pcx_summary_nib;
+			my $objRef2 = makeObjectIndexTable(\@pcx_details_ol_nl);
+			
+			#------------------------------------------------------------------------------------------------
+			# Compaare compare results		
+			#
+			#------------------------------------------------------------------------------------------------
+		   comp_compresult($verifyLprojResultRef, $resourcesDir, OB_NB, OL_NL, \%pcx_summary_dir_ob_nb, \%pcx_summary_dir_ol_nl, \%pcx_summary_file_ob_nb, \%pcx_summary_file_ol_nl, \%pcx_summary_nib_ob_nb, \%pcx_summary_nib_ol_nl, $objRef1, $objRef2, 0);
+		}
+		
+		
+		# Do other verifications which can be done from comparison result between newbase and newloc
+		if (newbaseLprojExist && newlocLprojExist)
+		{
+			# Compaare newbase vs newloc 
+		}
+	}
+}
+
+
+
+#******************************************************************************************
+# Verify localization work
+#	1. Warn if "Should Not be Localized" nib attribute is changed
+#
+#
+#******************************************************************************************
+sub verify
+{
+	my ($resourcesDir, $pcx_summary_dir_ref, $pcx_summary_file_ref, $pcx_summary_nib_ref, $objRef) = @_;
+
+	my %okToLocalizeNibAttrs = (
+			"dateFormat" => 1,
+			"frameRect" => 1,
+			"cellSize" => 1,
+			"contentRect" => 1,
+			"titleWidth" => 1,
+			"minSize" => 1,
+			"maxSize" => 1,
+			"width" => 1,
+			"maxWidth" => 1,
+			"minWidth" => 1,
+			"title" => 1,
+			"stringValue" => 1,
+			"alternateTitle" => 1,
+			"controlTitle" => 1,
+			"radioTitles" => 1,
+			"label" => 1,
+			"helpTagText" => 1,
+		);
+
+	foreach my $entity (sort keys %{$objRef})
+	{
+		if ($entity)
+		{
+			$gHeaderDone = 0;
+			$file = $objRef->{$entity}->_source;
+				
+			# .nib object
+			my $cRef = $objRef->{$entity}->_nib_object_details;
+			if ($cRef)
+			{
+				my $fixedRef = fix_nib_connection_object($cRef);
+				
+				# Compare categories and print an error message if they don't match.
+				foreach (sort keys %{$fixedRef})
+				{		
+					if ($fixedRef->{$_}->{category} eq "changed")
+					{
+						$fixedRef->{$_}->{value} =~ m/(\d+)-([^\-]*)-([^\-]*), (\w*):/;
+						my $attr = $4;
+					
+						next if (exists $okToLocalizeNibAttrs{$attr});
+					
+						unless ($gHeaderDone)
+						{
+							print $OUT "*** $resourcesDir/*****.lproj/$file\n";
+							$gHeaderDone = 1;
+						}
+						
+						print $OUT " You should not change the nib attribute: $attr.\n";
+						print $OUT "	$fixedRef->{$_}->{value}\n";	
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+#******************************************************************************************
+# Compare compare_result
+#	
+#
+#
+#******************************************************************************************
+sub comp_compresult
+{
+	my ($verifyLprojResultRef, $resourcesDir, $label1, $label2, $pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $pcx_summary_file_ref1, $pcx_summary_file_ref2, $pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $objRef1, $objRef2, $supress) = @_;
+
+	# Directory level summary verification
+	verify_dir_level_summary($pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+
+	# File level summary verification
+	verify_file_level_summary($pcx_summary_file_ref1, $pcx_summary_file_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+	
+	# Nib level summary verification
+	verify_nib_level_summary($pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+		
+		
+		
+	# Detailed level verification	
+	foreach my $entity (sort keys %{$objRef1})
+	{
+		my $headerDone = 0;
+		if ($entity)
+		{
+			if (exists $objRef2->{$entity})
+			{
+				# $objRef1->{$entity}->dump;
+				# $objRef2->{$entity}->dump;
+				# print "\n";
+				
+				$gHeaderDone = 0;
+				
+				# .strings file
+				if ($objRef1->{$entity}->_strings && $objRef2->{$entity}->_strings)
+				{
+					verify_strings($objRef1->{$entity}->_strings, $objRef2->{$entity}->_strings, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, $supress, $verifyLprojResultRef);
+				}
+		
+				# .nib class
+				# Skip this because this is not what a localizer is interested in. 
+				# if ($objRef1->{$entity}->_nib_class && $objRef2->{$entity}->_nib_class) {
+				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_class, $objRef2->{$entity}->_nib_class, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib class", $supress, $verifyLprojResultRef);
+				#}
+
+				# .nib hierarchy
+				# Skip this because this is not what a localizer is interested in. 
+				# if ($objRef1->{$entity}->_nib_hierarchy && $objRef2->{$entity}->_nib_hierarchy) {
+				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_hierarchy, $objRef2->{$entity}->_nib_hierarchy, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib hierarchy", $supress, $verifyLprojResultRef);
+				#}
+
+				# .nib connection
+				if ($objRef1->{$entity}->_nib_connection_details && $objRef2->{$entity}->_nib_connection_details)
+				{
+					verify_nib_connection_object($objRef1->{$entity}->_nib_connection_details, $objRef2->{$entity}->_nib_connection_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib connection", $supress, $verifyLprojResultRef);
+				}
+								
+				# .nib object
+				if ($objRef1->{$entity}->_nib_object_details && $objRef2->{$entity}->_nib_object_details)
+				{
+					verify_nib_connection_object($objRef1->{$entity}->_nib_object_details, $objRef2->{$entity}->_nib_object_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib object", $supress, $verifyLprojResultRef);
+				}
+								
+				# resource details
+				if ($objRef1->{$entity}->_res_details && $objRef2->{$entity}->_res_details)
+				{
+					verify_resource($objRef1->{$entity}->_res_details, $objRef2->{$entity}->_res_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "resource", $supress, $verifyLprojResultRef);
+				}													
+			}
+			else
+			{
+				# Add error handling code here
+			}
+		}
+	}
+}
+		
+
+
+#*****************************************************************************************
+# Resource verification
+#
+#
+#*****************************************************************************************
+sub verify_resource
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	
+	my $fixed1Ref = fix_resource($c1Ref);
+	my $fixed2Ref = fix_resource($c2Ref);
+
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef);	
+}
+
+
+
+#*****************************************************************************************
+# Return a hash containing each resource compare result.
+#	The hash key is "type + id + entity + data_key(optional)".
+#
+#*****************************************************************************************
+sub fix_resource
+{
+	my $resRef = shift;
+	my %out = ();
+	my @temp;
+	my $tempValue;
+
+	foreach my $resType (keys %{$resRef})
+	{
+		foreach my $summary_category (keys %{$resRef->{$resType}})
+		{
+			foreach my $resId (keys %{$resRef->{$resType}->{$summary_category}})
+			{
+				foreach my $entity_category (keys %{$resRef->{$resType}->{$summary_category}->{$resId}})
+				{
+					foreach my $entity (keys %{$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}})
+					{
+						if ((ref $resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}) eq "SCALAR")
+						{
+							# No item level detailed compare result
+							if ($gDebug)
+							{
+								print $OUT "### debug:", $resType, "\t", $resId, "\t", $entity, "\t", $entity_category, "\t",
+									${$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}}, "\n";
+							}
+							
+							$out{"'$resType'($resId), $entity"}->{"category"} = $entity_category;
+							
+							$tempValue = ${$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}};
+							if ($entity_category eq "changed")
+							{
+								@temp = split (/ \\ ===> \\ /, $tempValue);
+								if (@temp == 1)
+								{
+									$out{"'$resType'($resId), $entity"}->{"value"} = {"1" => $temp[0], "2" => $temp[0]};
+								}
+								else
+								{
+									$out{"'$resType'($resId), $entity"}->{"value"} = {"1" => $temp[0], "2" => $temp[1]};
+								}
+							}
+							elsif ($entity_category eq "identical")
+							{
+								$out{"'$resType'($resId), $entity"}->{"value"} = {"1" => $tempValue, "2" => $tempValue};
+							}
+							elsif ($entity_category eq "new")
+							{
+								$out{"'$resType'($resId), $entity"}->{"value"} = {"1" => "", "2" => $tempValue};
+							}
+							elsif ($entity_category eq "obsolete")
+							{
+								$out{"'$resType'($resId), $entity"}->{"value"} = {"1" => $tempValue, "2" => ""};
+							}
+							
+							#$temp = ${$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}};
+							#if ($entity_category eq "changed") {
+							#	$temp =~ s/ \\ ===> \\ / ===> /;
+							#}
+							#$out{"'$resType'($resId), $entity"}->{"value"} = "'$resType'($resId), $entity" . ":" . $temp;
+							
+						}
+						elsif ((ref $resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}) eq "HASH")
+						{
+							# Item level detailed compare result
+							foreach my $item_category (keys %{$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}})
+							{
+								foreach my $res_field (keys %{$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}->{$item_category}})
+								{
+									if ($gDebug)
+									{
+										print $OUT "### debug:", $resType, "\t", $resId, "\t", $entity, "\t", $res_field, "\t", $item_category, "\t",
+											${$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}->{$item_category}->{$res_field}}, "\n";
+									}
+									
+									$out{"'$resType'($resId), $entity, $res_field"}->{"category"} = $item_category;
+									
+									$tempValue = ${$resRef->{$resType}->{$summary_category}->{$resId}->{$entity_category}->{$entity}->{$item_category}->{$res_field}};
+									
+									if ($item_category eq "changed")
+									{
+										@temp = split (/ \\ ===> \\ /, $tempValue);
+										$out{"'$resType'($resId), $entity, $res_field"}->{"value"} = {"1" => $temp[0], "2" => $temp[1]};
+									}
+									elsif ($item_category eq "identical")
+									{
+										$out{"'$resType'($resId), $entity, $res_field"}->{"value"} = {"1" => $tempValue, "2" => $tempValue};
+									}
+									elsif ($item_category eq "new")
+									{
+										$out{"'$resType'($resId), $entity, $res_field"}->{"value"} = {"1" => "", "2" => $tempValue};
+									}
+									elsif ($item_category eq "obsolete")
+									{
+										$out{"'$resType'($resId), $entity, $res_field"}->{"value"} = {"1" => $tempValue, "2" => ""};
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+		
+	return \%out;
+}
+
+
+
+#*****************************************************************************************
+# Nib connection and object verification
+#
+#
+#*****************************************************************************************
+sub verify_nib_connection_object
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	
+	my $fixed1Ref = fix_nib_connection_object($c1Ref);
+	my $fixed2Ref = fix_nib_connection_object($c2Ref);
+
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef);
+}
+
+
+
+#*****************************************************************************************
+# Return a hash containing each nib connection/object compare result.
+#	The hash key is "id + key".
+#
+#*****************************************************************************************
+sub fix_nib_connection_object
+{
+	my $nibRef = shift;
+	my %out = ();
+	my @temp;
+		
+	foreach my $summary_category (keys %{$nibRef})
+	{
+		foreach my $id (keys %{$nibRef->{$summary_category}})
+		{
+			foreach my $details_category (keys %{$nibRef->{$summary_category}->{$id}})
+			{
+				foreach my $itemKey (keys %{$nibRef->{$summary_category}->{$id}->{$details_category}})
+				{
+					if ($gDebug)
+					{
+						print $OUT "### debug:", $summary_category, "\t", $id, "\t",  $details_category, "\t", $itemKey,
+							"\t",  $summary_category, "\t", 
+							${$nibRef->{$summary_category}->{$id}->{$details_category}->{$itemKey}}, "\n";
+					}
+					
+					$out{"$id, $itemKey"}->{"category"} = $details_category;
+					my $tempValue = ${$nibRef->{$summary_category}->{$id}->{$details_category}->{$itemKey}};
+					# my $class = &GetNibClass($nibRef, $summary_category, $id);
+					# my $title = &GetNibTitle($nibRef, $summary_category, $id); 
+					
+					if ($details_category eq "changed")
+					{
+						@temp = split (/ \\ ===> \\ /, $tempValue);
+						$out{"$id, $itemKey"}->{"value"} = {"1" => $temp[0], "2" => $temp[1]};
+					}
+					elsif ($details_category eq "identical")
+					{
+						$out{"$id, $itemKey"}->{"value"} = {"1" => $tempValue, "2" => $tempValue};
+					}
+					elsif ($details_category eq "new")
+					{
+						$out{"$id, $itemKey"}->{"value"} = {"1" => "", "2" => $tempValue};
+					}
+					elsif ($details_category eq "obsolete")
+					{
+						$out{"$id, $itemKey"}->{"value"} = {"1" => $tempValue, "2" => ""};
+					}
+				}
+			}
+		}
+	}
+	
+	return \%out;
+}
+
+
+
+#*****************************************************************************************
+# Return a nib Class
+#	
+#
+#*****************************************************************************************
+sub GetNibClass
+{
+	my ($nibRef, $summary_category, $id) = @_;
+	my $temp;
+	my @returnValue;
+
+	foreach my $details_category (keys %{$nibRef->{$summary_category}->{$id}})
+	{
+		foreach my $itemKey (keys %{$nibRef->{$summary_category}->{$id}->{$details_category}})
+		{
+			if ($itemKey eq "Class")
+			{
+				$temp = ${$nibRef->{$summary_category}->{$id}->{$details_category}->{$itemKey}};
+				@returnValue = split(/ \\ ===> \\ /, $temp);
+				
+				if (@returnValue == 2)
+				{
+					return $returnValue[0];
+				}
+				else
+				{
+					return $temp;
+				}
+			}
+		}
+	}
+
+	return "";
+}
+
+
+
+#*****************************************************************************************
+# Return a nib Class
+#	
+#
+#*****************************************************************************************
+sub GetNibTitle
+{
+	my ($nibRef, $summary_category, $id) = @_;
+	my $temp;
+	my @returnValue;
+
+	foreach my $details_category (keys %{$nibRef->{$summary_category}->{$id}})
+	{
+		foreach my $itemKey (keys %{$nibRef->{$summary_category}->{$id}->{$details_category}})
+		{
+			if ($itemKey =~ m/(title|stringValue|Marker|label)/)
+			{
+				$temp = ${$nibRef->{$summary_category}->{$id}->{$details_category}->{$itemKey}};
+				@returnValue = split(/ \\ ===> \\ /, $temp);
+			
+				if (@returnValue == 2)
+				{
+					return &Truncate($returnValue[0]);
+				}
+				else
+				{
+					return &Truncate($temp);
+				}
+			}
+		}
+	}
+
+	return "";
+}
+
+
+
+#*****************************************************************************************
+# Truncate a string
+#	
+#
+#*****************************************************************************************
+sub Truncate
+{
+ 	my $inStr = shift;
+ 	
+	if ($inStr =~ m/^\x22/)
+	{
+		# Eliminate leading"
+		$inStr =~ s/^\x22(.*)/\1/;
+	}
+
+	if ($inStr =~ m/\x22$/)
+	{
+		# Eliminate tailing "
+		$inStr =~ s/(.*)\x22$/\1/;
+	}
+	
+	$inStr =~ s/^(.{0,12})(.*)/\1/; 
+	$inStr =~ s/ /_/g;	# Replace a spce with underscore 
+	$inStr =~ s/-/_/g;	# Replace a - with underscore 
+
+	return $inStr;
+}
+
+
+
+#*****************************************************************************************
+# Nib class and hierachy verification
+#
+#
+#*****************************************************************************************
+sub verify_nib_class_hierarchy
+{
+	my ($c1, $c2, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	
+	if ($c1 ne $c2)
+	{
+		unless ($gHeaderDone)
+		{
+			print $OUT "*** $resourcesDir/*****.lproj/$file\n";
+			$gHeaderDone = 1;
+		}
+		
+		print $OUT "  Compare results for $nibkind differ: $c1Title is $c1 but $c2Title is $c2.\n";
+	}	
+}
+
+
+#*****************************************************************************************
+# .strings file verification
+#
+#
+#*****************************************************************************************
+sub verify_strings
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $supress, $verifyLprojResultRef) = @_;
+	
+	my $fixed1Ref = fix_strings($c1Ref);
+	my $fixed2Ref = fix_strings($c2Ref);
+
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, ".strings", $supress, $verifyLprojResultRef);
+}
+
+
+
+#*****************************************************************************************
+# Directory level summary verification
+#
+#
+#*****************************************************************************************
+sub verify_dir_level_summary
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my $fixed1Ref = fix_dir_level_summary($c1Ref);
+	my $fixed2Ref = fix_dir_level_summary($c2Ref);
+
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "directory", $verifyLprojResultRef);
+}
+
+
+
+#*****************************************************************************************
+# File level summary verification
+#
+#
+#*****************************************************************************************
+sub verify_file_level_summary
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my $fixed1Ref = fix_file_level_summary($c1Ref);
+	my $fixed2Ref = fix_file_level_summary($c2Ref);
+
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "file", $verifyLprojResultRef);
+}
+
+
+
+#*****************************************************************************************
+# Nib level summary verification
+#
+#
+#*****************************************************************************************
+sub verify_nib_level_summary
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my $fixed1Ref = fix_nib_level_summary($c1Ref);
+	my $fixed2Ref = fix_nib_level_summary($c2Ref);
+
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "nib", $verifyLprojResultRef);
+}
+
+
+#*****************************************************************************************
+# Detail level report
+#
+#
+#*****************************************************************************************
+sub detail_level_report
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $kind, $supress, $verifyLprojResultRef) = @_;
+	
+#	print $resourcesDir, "\n";
+#	print $file, "\n";
+#	print $verifyLprojResultRef->{"oldbase"}, "\n";
+#	print $verifyLprojResultRef->{"newbase"}, "\n";
+#	print $verifyLprojResultRef->{"oldloc"}, "\n";
+#	print $verifyLprojResultRef->{"newloc"}, "\n";
+#	my $fileLevelCompareResultIndex;
+
+	#------------------------------------------------------------------------------
+	# To generate a file level URL, it is required to figure out $fileLevelIndex
+	#------------------------------------------------------------------------------
+
+	my $filePath_oldbase = $verifyLprojResultRef->{"oldbase"} . "/" . $file;
+	my $filePath_newbase = $verifyLprojResultRef->{"newbase"} . "/" . $file;
+	my $filePath_oldloc = $verifyLprojResultRef->{"oldloc"} . "/" . $file;
+	my $filePath_newloc = $verifyLprojResultRef->{"newloc"} . "/" . $file;
+	
+	my $fileLevelKind;
+	if ($file =~ m/\.nib$/)
+	{
+		$fileLevelKind = "nib";
+	}
+	else
+	{
+		$fileLevelKind = "file";
+	}
+	
+	$filePath_oldbase = &obtainActualPath($filePath_oldbase, $fileLevelKind);
+	$filePath_newbase = &obtainActualPath($filePath_newbase, $fileLevelKind);
+ 
+	my $oldbaseExist = "";
+	my $newbaseExist = "";
+	my $oldlocExist = "";
+	my $newlocExist = "";
+
+	if (-e $filePath_oldbase) { $oldbaseExist = 1; };
+	if (-e $filePath_newbase) { $newbaseExist = 1; };
+	if (-e $filePath_oldloc) { $oldlocExist = 1; };
+	if (-e $filePath_newloc) { $newlocExist = 1; };
+	
+	my $OB_NB_Result;
+	my $OL_NL_Result;
+	
+	if ($oldbaseExist && $newbaseExist)
+	{
+		$OB_NB_Result = "identical";
+	}
+	elsif ($oldbaseExist)
+	{
+		$OB_NB_Result = "obsolete";
+	}
+	elsif ($newbaseExist)
+	{
+		$OB_NB_Result = "new";
+	}
+	else
+	{
+		$OB_NB_Result = "noentry";
+	}
+	
+	if ($oldlocExist && $newlocExist)
+	{
+		$OL_NL_Result = "identical";
+	}
+	elsif ($oldlocExist)
+	{
+		$OL_NL_Result = "obsolete";
+	}
+	elsif ($newlocExist)
+	{
+		$OL_NL_Result = "new";
+	}
+	else
+	{
+		$OL_NL_Result = "noentry";
+	}
+	
+	my $fileLevelIndex = &verifyResultIndex($OB_NB_Result, $OL_NL_Result);
+	
+	
+	#------------------------------------------------------------------------------
+	# Categorizing input data
+	#------------------------------------------------------------------------------
+	my %detailedReport = ();
+	my $resultIndex;
+	my $index;
+	my $entry;
+
+	# Report a new entry in $c1Ref
+	foreach (sort keys %{$c1Ref})
+	{
+		unless (exists $c2Ref->{$_})
+		{
+			unless ($supress)
+			{
+				$resultIndex = &verifyResultIndex($c1Ref->{$_}->{category}, "noentry");
+				push (@{$detailedReport{$resultIndex}}, {'itemKey' => $_});
+			}
+		}
+	}
+
+	# Report a new entry in $c2Ref
+	foreach (sort keys %{$c2Ref})
+	{
+		unless (exists $c1Ref->{$_})
+		{
+			unless ($supress)
+			{
+				$resultIndex = &verifyResultIndex("noentry", $c2Ref->{$_}->{category});
+				push (@{$detailedReport{$resultIndex}}, {'itemKey' => $_});
+			}
+		}
+	}
+
+	# Compare categories and print an error message if they don't match.
+	foreach (sort keys %{$c1Ref})
+	{
+		if (exists $c2Ref->{$_})
+		{
+			$resultIndex = &verifyResultIndex($c1Ref->{$_}->{category}, $c2Ref->{$_}->{category});
+			push (@{$detailedReport{$resultIndex}}, {'itemKey' => $_});
+		}
+	}
+
+
+	#------------------------------------------------------------------------------------------------------
+	# Print detailed report
+	#------------------------------------------------------------------------------------------------------
+	$gHeaderDone = 0;
+	foreach $index (sort messagePriority keys %detailedReport)
+	{
+		# next if (&verifyResultCode($index) eq "OK");
+		next unless (&printVerifyResul($index));
+		 
+		#  Print an URL for the file
+		unless ($supress)
+		{
+			unless ($gHeaderDone)
+			{
+				printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a file: %s...\n",  $file);
+				&printURLforFile($file, $fileLevelKind, $fileLevelIndex, $verifyLprojResultRef, 0);
+				$gHeaderDone = 1;
+			}
+		}
+		  
+		  
+		  
+		&print1LineResultSummaryMessage($index);
+		foreach $entry (@{$detailedReport{$index}})
+		{
+		# print $OUT "\t", $file, "\t", $entry->{"itemKey"}, "\n";
+			print $OUT "\t", $entry->{"itemKey"}, "\n";
+		
+			if (($kind eq "nib object") || ($kind eq "nib connection"))
+			{
+				&printURLforNib($file, $kind, $index, $verifyLprojResultRef, 1, $entry->{"itemKey"});
+			}
+			
+			if ($c1Ref->{$entry->{"itemKey"}}->{"category"} eq "identical" )
+			{
+				print $OUT "\t\t";
+				print $OUT "OB/NB:";
+				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+			}
+			else
+			{
+				print $OUT "\t\t";
+				print $OUT "OB:";
+				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				print $OUT "\t\t";
+				print $OUT "NB:";
+				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
+			}
+
+			if ($c2Ref->{$entry->{"itemKey"}}->{"category"} eq "identical" )
+			{
+				print $OUT "\t\t";
+				print $OUT "OL/NL:";
+				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+			}
+			else
+			{
+				print $OUT "\t\t";
+				print $OUT "OL:";
+				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				print $OUT "\t\t";
+				print $OUT "NL:";
+				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
+			}
+		}
+	}
+}
+
+
+
+#*****************************************************************************************
+# Add file level summary report to the result dictionary.
+#
+#
+#*****************************************************************************************
+sub AddFileLevelSummaryReport
+{
+	my ($verifyLprojResultRef, $c1Ref, $c2Ref) = @_;
+}
+
+
+
+#*****************************************************************************************
+# Print summary level report
+#
+#
+#*****************************************************************************************
+sub summary_level_report
+{
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $entityKind, $verifyLprojResultRef) = @_;
+	my %summaryReport = ();
+	my $resultIndex;
+
+	# A new entry in $c1Ref
+	foreach (keys %{$c1Ref})
+	{
+		unless (exists $c2Ref->{$_})
+		{
+			unless ($supress)
+			{
+				$resultIndex = &verifyResultIndex($c1Ref->{$_}, "noentry");
+				push (@{$summaryReport{$resultIndex}}, {'name' => $_, 'kind' => $entityKind});
+			}
+		}
+	}
+
+	# A new entry in $c2Ref
+	foreach (sort keys %{$c2Ref})
+	{
+		unless (exists $c1Ref->{$_})
+		{
+			unless ($supress)
+			{
+				$resultIndex = &verifyResultIndex("noentry", $c2Ref->{$_});
+				push (@{$summaryReport{$resultIndex}}, {'name' => $_, 'kind' => $entityKind});
+			}
+		}
+	}
+
+	# Compare categories and print an error message if they don't match.
+	foreach (sort keys %{$c1Ref})
+	{
+		if (exists $c2Ref->{$_})
+		{
+			$resultIndex = &verifyResultIndex($c1Ref->{$_}, $c2Ref->{$_});
+			push (@{$summaryReport{$resultIndex}}, {'name' => $_, 'kind' => $entityKind});
+		}
+	}
+
+
+	# Print summary report
+	foreach $index (sort messagePriority keys %summaryReport)
+	{
+		# next if (&verifyResultCode($index) eq "OK");
+		next unless (&printVerifyResul($index));
+		  
+		&print1LineResultSummaryMessage($index);
+	
+		foreach $entry (@{$summaryReport{$index}})
+		{
+			print $OUT $entry->{'name'}, "\n";
+			&printURLforFile($entry->{'name'}, $entry->{'kind'}, $index, $verifyLprojResultRef, 0);
+			
+			# print "\t", $resourcesDir, "\n";
+			# print "\t", $entry->{'name'}, "\n";
+		}
+	}
+}
+
+sub messagePriority
+{
+	my $a_code = verifyResultCode($a);
+	my $b_code = verifyResultCode($b);
+	my $a_value = valueForMessageCode($a_code);
+	my $b_value = valueForMessageCode($b_code);
+
+	if ($a_value > $b_value)
+	{
+		return 1;
+	}
+	elsif ($a_value < $b_value)
+	{
+		return -1;
+	}
+	else
+	{
+		return ($a cmp $b);
+	}
+
+}
+
+sub valueForMessageCode
+{
+	my ($code) = @_;
+	return 4 if ($code eq "OK");
+	return 3 if ($code eq "INFO");
+	return 2 if ($code eq "WARNING");
+	return 1 if ($code eq "ERROR");
+}
+
+sub print1LineResultSummaryMessage
+{
+	my ($index) = @_;
+	
+	my $code = verifyResultCode($index);
+	my $message = &verifyResultMessage($index);
+	
+	if ($code eq "OK")
+	{
+	
+	}
+	elsif ($code eq "INFO")
+	{
+		print $OUT "+++ FocusedLocVerifier INFO: $message ($index)\n";
+	}
+	elsif ($code eq "WARNING")
+	{
+		print $OUT "*** FocusedLocVerifier WARNING: $message ($index)\n";
+	}
+	elsif ($code eq "ERROR")
+	{
+		print $OUT "ÔøΩIÔøΩIÔøΩI FocusedLocVerifier ERROR: $message ($index)\n";
+	}
+}
+
+
+
+#*****************************************************************************************
+# Return a hash containing each string compare result.
+#	The hash key is "string key".
+#
+#*****************************************************************************************
+sub fix_strings
+{
+	my $stringsRef = shift;
+	my %out = ();
+	my @temp;
+	
+	foreach my $category (keys %{$stringsRef})
+	{
+		foreach my $key (keys %{$stringsRef->{$category}})
+		{
+			$out{$key}->{"category"} = $category;
+
+			my $tempValue = ${$stringsRef->{$category}->{$key}};
+			if ($category eq "changed")
+			{
+				@temp = split (/ \\ ===> \\ /, $tempValue);
+				$out{$key}->{"value"} = {"1" => $temp[0], "2" => $temp[1]};
+			}
+			elsif ($category eq "identical")
+			{
+				$out{$key}->{"value"} = {"1" => $tempValue, "2" => $tempValue};
+			}
+			elsif ($category eq "new")
+			{
+				$out{$key}->{"value"} = {"1" => "", "2" => $tempValue};
+			}
+			elsif ($category eq "obsolete")
+			{
+				$out{$key}->{"value"} = {"1" => $tempValue, "2" => ""};
+			}
+		}
+	}
+	
+
+	if ($gDebug)
+	{
+		foreach (keys %out)
+		{
+			print $OUT "### debug:", $out{$_}->{"category"}, "\t", $out{$_}->{"value"}->{"1"}, "\n";
+			print $OUT "### debug:", $out{$_}->{"category"}, "\t", $out{$_}->{"value"}->{"2"}, "\n";
+		}
+	}
+
+	return \%out;
+}
+
+
+
+sub fix_file_level_summary
+{
+	my $summaryRef = shift;
+	my %out = ();
+	
+	foreach my $category (keys %{$summaryRef})
+	{
+		if (($category eq "new") || ($category eq "obsolete"))
+		{
+			foreach my $file (@{$summaryRef->{$category}})
+			{
+				$out{$file} = $category; 
+			}
+		}
+		else
+		{
+			foreach my $file (keys %{$summaryRef->{$category}})
+			{
+				foreach my $kind (@{$summaryRef->{$category}->{$file}})
+				{
+					# $out{$file." [$kind]"} = $category; 
+					$out{$file} = $category; 
+				}
+			}
+		}
+	}
+
+	if ($gDebug)
+	{
+		foreach (keys %out)
+		{
+			print $OUT "### debug:", $_, "\t", $out{$_}, "\n";
+		}
+	}
+	
+	return \%out;
+}
+
+
+sub fix_nib_level_summary
+{
+	my $summaryRef = shift;
+	my %out = ();
+		
+	foreach my $category (keys %{$summaryRef})
+	{
+		foreach my $file (@{$summaryRef->{$category}})
+		{
+			$out{$file} = $category; 
+		}
+	}
+
+	if ($gDebug)
+	{
+		foreach (keys %out)
+		{
+			print $OUT "### debug:", $_, "\t", $out{$_}, "\n";
+		}
+	}
+	
+	return \%out;
+}
+
+
+sub fix_dir_level_summary
+{
+	my $summaryRef = shift;
+	my %out = ();
+		
+	foreach my $category (keys %{$summaryRef})
+	{
+		foreach my $file (@{$summaryRef->{$category}})
+		{
+			$out{$file} = $category; 
+		}
+	}
+
+	if ($gDebug)
+	{
+		foreach (keys %out)
+		{
+			print $OUT "### debug:", $_, "\t", $out{$_}, "\n";
+		}
+	}
+	
+	return \%out;
+}
+
+
+sub name_order
+{
+	return ($a->_source . $a->_target) cmp ($b->_source . $b->_target);
+}
+
+
+sub makeObjectIndexTable
+{
+	my $objRef = shift;
+	my %indexTable = ();
+	
+	foreach (@{$objRef})
+	{
+		if ($gDebug)
+		{
+			print $OUT "### debug:", $_->_source, "\n";
+		}
+		
+		$indexTable{$_->_source} = $_;
+	}
+	
+	return \%indexTable;
+}
+
+
+
+#*****************************************************************************************
+# Verify compare results and return the index
+#
+#
+#*****************************************************************************************
+sub verifyResultIndex
+{
+
+	my ($OB_NB, $OL_NL) = @_;
+
+	my %result = (
+		"changed:changed" 	=> "a1",
+		"changed:identical" => "a2",
+		"changed:new" 		=> "a3",
+		"changed:obsolete" 	=> "a4",
+		"changed:noentry" 	=> "a5",
+	
+		"identical:changed" 	=> "b1",
+		"identical:identical" 	=> "b2",
+		"identical:new" 		=> "b3",
+		"identical:obsolete" 	=> "b4",
+		"identical:noentry" 	=> "b5",
+	
+		"new:changed" 	=> "c1",
+		"new:identical" => "c2",
+		"new:new" 		=> "c3",
+		"new:obsolete" 	=> "c4",
+		"new:noentry" 	=> "c5",
+
+		"obsolete:changed" 		=> "d1",
+		"obsolete:identical"	=> "d2",
+		"obsolete:new" 			=> "d3",
+		"obsolete:obsolete" 	=> "d4",
+		"obsolete:noentry" 		=> "d5",
+
+		"noentry:changed" 	=> "e1",
+		"noentry:identical" => "e2",
+		"noentry:new" 		=> "e3",
+		"noentry:obsolete" 	=> "e4",
+		"noentry:noentry" 	=> "e5",
+	);
+	
+	return $result{"$OB_NB:$OL_NL"};
+
+}
+
+
+
+#*****************************************************************************************
+# Verify compare results and return the result (OK, ERROR, WARNING or INFO)
+#
+#
+#*****************************************************************************************
+sub verifyResultCode
+{
+
+	my ($index) = @_;
+
+	my %result = (
+		"a1" 	=> "OK",
+		"a2" 	=> "INFO",
+		"a3" 	=> "WARNING",
+		"a4" 	=> "WARNING",
+		"a5" 	=> "WARNING",
+	
+		"b1" 	=> "INFO",
+		"b2" 	=> "OK",
+		"b3" 	=> "WARNING",
+		"b4" 	=> "WARNING",
+		"b5" 	=> "WARNING",
+	
+		"c1" 	=> "WARNING",
+		"c2"	=> "WARNING",
+		"c3" 	=> "OK",
+		"c4" 	=> "WARNING",
+		"c5" 	=> "WARNING",
+
+		"d1" 	=> "WARNING",
+		"d2"	=> "WARNING",
+		"d3" 	=> "WARNING",
+		"d4" 	=> "OK",
+		"d5" 	=> "WARNING",
+
+		"e1" 	=> "WARNING",
+		"e2" 	=> "WARNING",
+		"e3" 	=> "WARNING",
+		"e4" 	=> "WARNING",
+		"e5" 	=> "OK",
+	);
+	
+	return $result{"$index"};
+
+}
+
+
+
+#***********************************************************************************************
+# Suppress redundant messages as the messages are reported by compare result betwee NB and NL
+#
+#
+#***********************************************************************************************
+sub printVerifyResul
+{
+	my ($index) = @_;
+
+	my %result = (
+		"a1" 	=> 0,
+		"a2" 	=> 1,
+		"a3" 	=> 1,
+		"a4" 	=> 0,
+		"a5" 	=> 0,
+	
+		"b1" 	=> 1,
+		"b2" 	=> 0,
+		"b3" 	=> 1,
+		"b4" 	=> 0,
+		"b5" 	=> 0,
+	
+		"c1" 	=> 1,
+		"c2"	=> 1,
+		"c3" 	=> 0,
+		"c4" 	=> 0,
+		"c5" 	=> 0,
+
+		"d1" 	=> 0,
+		"d2"	=> 0,
+		"d3" 	=> 0,
+		"d4" 	=> 0,
+		"d5" 	=> 1,
+
+		"e1" 	=> 0,
+		"e2" 	=> 0,
+		"e3" 	=> 0,
+		"e4" 	=> 1,
+		"e5" 	=> 0,
+	);
+	
+	return $result{"$index"};
+}
+
+
+
+#*****************************************************************************************
+#	Return the error message to the specified error code.
+#
+#
+#*****************************************************************************************
+sub verifyResultMessage
+{
+	my ($index) = @_;
+
+	my %result = (
+		"a1" 	=> "",
+		"a2" 	=> "US changed but Loc did NOT change. Is the change US specific one?",
+		"a3" 	=> "You removed this entity from OldLoc but did NOT remove it from NewLoc. Is this OK?",
+		"a4" 	=> "You removed this entity from NewLoc.  Is this OK?",
+		"a5" 	=> "You removed this entity from OldLoc or/and NewLoc. Is this OK?",
+	
+		"b1" 	=> "US did NOT change but Loc changed. Did you fix a localization bug?",
+		"b2" 	=> "",
+		"b3" 	=> "You removed this entity from OldLoc but did NOT remove it from NewLoc. Is this OK?",
+		"b4" 	=> "You removed this entity from NewLoc.  Is this OK?",
+		"b5" 	=> "You removed this entity from OldLoc or/and NewLoc. Is this OK?",
+	
+		"c1" 	=> "You added this entity to OldLoc. The entity is now included in NewBase. Please take an appropriate action.:",
+		"c2" 	=> "You added this entity to OldLoc. The entity is now included in NewBase. Please take an appropriate action.",
+		"c3" 	=> "",
+		"c4" 	=> "You added this entity to OldLoc. The entity is now included in NewBase. Please take an appropriate action.",
+		"c5" 	=> "You removed this entity from NewLoc. Is this OK?",
+
+		"d1" 	=> "This entity was removed from NewBase but you didn't remove it from NewLoc. Is this OK?",
+		"d2"	=> "This entity was removed from NewBase but you didn't remove it from NewLoc. Is this OK?",
+		"d3" 	=> "You removed this entity from OldLoc. The entity is now removed from NewBase. Please take an appropriate action.",
+		"d4" 	=> "",
+		"d5" 	=> "You removed this entity from OldLoc. The entity is now removed from NewBase. Please take an appropriate action.",
+
+		"e1" 	=> "You added this entity to OldLoc and NewLoc. Is this OK?",
+		"e2" 	=> "You added this entity to OldLoc and NewLoc. Is this OK?",
+		"e3" 	=> "You added this entity to NewLoc. Is this OK?",
+		"e4" 	=> "You added this entity to OldLoc. Is this OK?",
+		"e5" 	=> "",
+	);
+	
+	return $result{"$index"};
+}
+
+
+
+#*****************************************************************************************
+#	Return the array representing which entity (OB, NB, OL and NL)  exists.
+#
+#
+#*****************************************************************************************
+sub entityExist
+{
+	my ($index) = @_;
+	
+	my %result = (
+		"a1" 	=> [1, 1, 1, 1],
+		"a2" 	=> [1, 1, 1, 1],
+		"a3" 	=> [1, 1, 0, 1],
+		"a4" 	=> [1, 1, 1, 0],
+		"a5" 	=> [1, 1, 0, 0],
+	
+		"b1" 	=> [1, 1, 1, 1],
+		"b2" 	=> [1, 1, 1, 1],
+		"b3" 	=> [1, 1, 0, 1],
+		"b4" 	=> [1, 1, 1, 0],
+		"b5" 	=> [1, 1, 0, 0],
+		
+		"c1" 	=> [0, 1, 1, 1],
+		"c2" 	=> [0, 1, 1, 1],
+		"c3" 	=> [0, 1, 0, 1],
+		"c4" 	=> [0, 1, 1, 0],
+		"c5" 	=> [0, 1, 0, 0],
+
+		"d1" 	=> [1, 0, 1, 1],
+		"d2" 	=> [1, 0, 1, 1],
+		"d3" 	=> [1, 0, 0, 1],
+		"d4" 	=> [1, 0, 1, 0],
+		"d5" 	=> [1, 0, 0, 0],
+ 
+		"e1" 	=> [0, 0, 1, 1],
+		"e2" 	=> [0, 0, 1, 1],
+		"e3" 	=> [0, 0, 0, 1],
+		"e4" 	=> [0, 0, 1, 0],
+		"e5" 	=> [0, 0, 0, 0],
+
+	);
+
+   return @{$result{"$index"}};
+}
+
+
+
+#*****************************************************************************************
+#	Return the last path component.
+#
+#
+#*****************************************************************************************
+sub lastComponent
+{
+	my ($full_path) = @_;
+	
+	$full_path =~ m/.+\/(.+)$/;
+
+	if ($1)
+	{
+		return $1;
+	}
+	else
+	{
+		return $full_path;
+	}
+}
+
+
+
+#*****************************************************************************************
+#	Parse a list of file/directory pairs separated by a slash (/).
+#		US_file_name_1/Localized_file_name_1
+#		US_file_name_2/Localized_file_name_2
+#
+#
+#*****************************************************************************************
+sub parseSlashSeparateGlossary
+{
+	my ($inPairs, $pairRef, $kind) = @_;
+
+	foreach (split (/\n/, $inPairs))
+	{
+		chomp;
+		next if (m/^\/\//);	# comment line
+		my @pair = split (/\//);
+		next if (@pair != 2); # Not a valid entry.
+		utf8::decode($pair[0]);
+		utf8::decode($pair[1]);
+		$pairRef->{$pair[0]} = $pair[1];
+		
+		if ($kind eq "file")
+		{
+			push (@gOtherPcxOptions, "-mapfByPair");
+		}
+		elsif ($kind eq "dir")
+		{
+			push (@gOtherPcxOptions, "-mapdByPair");
+		}
+
+		push (@gOtherPcxOptions,"'$pair[0]/$pair[1]'");
+	}
+}
+
+
+
+#****************************************************************************************************
+#	Obtain file name mapping information from pcx output and add the info to the specified array.
+#		Here is the entry in pcx output.
+# [pcx:m:mapping:file:guess://->/Users/kenji/Desktop/ge1/_NewBase/iSyncReadMes_Tier1_proj/Read Before You Install iSync.app/Contents/Resources/English.lproj/asaka.txt<-//->/Users/kenji/Desktop/ge1/_NewLoc/iSyncReadMes_Tier1_proj/Read Before You Install iSync.app/Contents/Resources/Japanese.lproj/kenji.txt<-//:] asaka.txt \ ===> \ kenji.txt
+#
+#****************************************************************************************************
+sub ObtainFileNameMappingInfoFromPcxOutput
+{
+	my ($pcxOutput, $optionsArrayRef) = @_;
+
+	foreach (split (/\n/, $pcxOutput))
+	{
+		next unless (m/^# \[pcx:m:mapping:file:guess:\/\/->(.+)<-\/\/->(.+)<-\/\/:] ((.+) \\ ===> \\ (.+))/);
+		# $4:US file name, $5:Localized file name
+		my $US = $4; utf8::decode($US);
+		my $LOC = $5; utf8::decode($LOC);
+		
+		push (@{$optionsArrayRef}, "-mapfByPair");
+		push (@{$optionsArrayRef}, "'$US/$LOC'");
+	
+		$gFilePairs{$US} = $LOC;
+	}
+	
+	if ((scalar %gFilePairs) > 0)
+	{
+		$gMapFile = 1;
+	}
+}
+
+
+
+#*****************************************************************************************
+#	Substitute US file/directory name with the corresponding Japanese name.
+#
+#
+#
+#*****************************************************************************************
+sub	substituteUSnameWithLOCname
+{
+	my ($compResultArrayRef) = @_;
+	
+	my $cat = "new|changed|obsolete|identical";
+ 	my $cat2 = "new|obsolete|identical";
+	my $entity = "file|dir|nib";
+	my $sharp = "#";
+	my $source;
+	my $target;
+	my $source_target;
+	my $f;
+	my $pathToNib;
+	my $header;
+	my $sourceTargetClosingBlacketAndSpace;
+	my $translatedEntry;
+	my @pathComponents;
+	my $pathComponentsCount;
+	my $index;
+	my $resultInfo;
+   
+	
+	# Return right away so that there is no performance impact when not to map US file name to localized file name.
+	return if (((scalar %gFilePairs) == 0 ) && ((scalar %gDirectoryPairs) == 0));
+
+	
+	foreach (@{$compResultArrayRef})
+	{
+		# print $_;
+		$translatedEntry = "";
+		
+		if (m/^($sharp \[pcx:i:($cat2):dir:\] )(.*)$/)
+		{
+			#-------------------------------
+			# directory level summary info
+			#-------------------------------			
+			$header = $1;
+			$source_target = $3;
+					
+					
+			# Translate directory name
+			if  ($gMapDirectory && $source_target)
+			{
+				$translatedEntry .= $header;
+			
+				@pathComponents = split (/\//, $source_target);
+				$pathComponentsCount = @pathComponents;
+				$index = 0;
+				
+				foreach (@pathComponents)
+				{
+					if (exists $gDirectoryPairs{$_})
+					{
+						$translatedEntry .= $gDirectoryPairs{$_};
+						$gDirectoryPairsReverse{$gDirectoryPairs{$_}} = $_;
+					}
+					else
+					{
+						$translatedEntry .= $_;
+					}
+
+					$index++;
+
+					if ($index < $pathComponentsCount) {$translatedEntry .= "/";};
+					
+					# print $translatedEntry, "\n";
+				};
+
+				$translatedEntry .= "\n";
+				$_ = $translatedEntry;
+
+			}
+		}
+		elsif (m/^($sharp \[pcx:i:($cat):file:(([DR]F):(res_map:)?)?)((\/\/->(.*)<-\/\/->(.*)<-\/\/){1}?:\] )(.*)$/)
+		{
+			#---------------------------
+			# file level summary info
+ 			#---------------------------
+			$header = $1;
+			$source = $8;		# source parent directory
+			$target = $9;		# target parent directory
+			$f = $10;			# file name
+			$sourceTargetClosingBlacketAndSpace = $6;
+		
+			$translatedEntry .= $header;
+			
+			# Translate header part
+			if  ($gMapDirectory && ($source || $target))
+			{
+				$translatedEntry = &translateSourceTargetPaths($source, $target, $translatedEntry);
+			}
+			else
+			{
+				$translatedEntry .= $sourceTargetClosingBlacketAndSpace;
+			}
+			
+			# Translate file name
+			if ($gMapFile && (exists $gFilePairs{$f}))
+			{
+				$gFilePairsReverse{$gFilePairs{$f}} = $f;
+				$translatedEntry .= $gFilePairs{$f};
+			}
+			else
+			{
+				$translatedEntry .= $f;
+			}
+			
+			$translatedEntry .= "\n";
+			$_ = $translatedEntry;
+			
+		}
+		elsif (m/^($sharp \[pcx:i:($cat):nib:)((\/\/->(.*)<-\/\/->(.*)<-\/\/){1}?:\] )(.*)$/)
+		{
+			#---------------------------
+			# nib summary info
+ 			#---------------------------
+			$header = $1;
+			$source = $5;		# source parent directory
+			$target = $6;		# target parent directory
+			my $pathToNib = $7;	# relative path to the nib
+			$sourceTargetClosingBlacketAndSpace = $3;
+		
+			$translatedEntry .= $header;
+			
+			# Translate header part
+			if  ($gMapDirectory && ($source || $target))
+			{
+				$translatedEntry = &translateSourceTargetPaths($source, $target, $translatedEntry);
+			}
+			else
+			{
+				$translatedEntry .= $sourceTargetClosingBlacketAndSpace;
+			}
+
+			# Translate relative path to the nib
+			@pathComponents = split (/\//, $pathToNib);
+			$pathComponentsCount = @pathComponents;
+			$index = 0;
+			
+			foreach (@pathComponents)
+			{
+				if (exists $gDirectoryPairs{$_})
+				{
+					$translatedEntry .= $gDirectoryPairs{$_};
+					$gDirectoryPairsReverse{$gDirectoryPairs{$_}} = $_;
+				}
+				else
+				{
+					$translatedEntry .= $_;
+				}
+				
+				$index++;
+				
+				if ($index < $pathComponentsCount) {$translatedEntry .= "/";};
+			};
+			
+			$translatedEntry .= "\n";
+			$_ = $translatedEntry;
+		}
+		elsif (m/^($sharp \[pcx:i:($cat)(.+))(\/\/->(.*)<-\/\/->(.*)<-\/\/:\] )(.*)$/)
+		{
+			#---------------------------
+			# Detailed info
+ 			#---------------------------
+			$header = $1;
+			$source = $5;		# source parent directory
+			$target = $6;		# target parent directory
+			$resultInfo = $7;		# compare result info
+			$sourceTargetClosingBlacketAndSpace = $4;
+		   
+			$translatedEntry .= $header;
+			
+			# Translate header part
+			if  ($gMapDirectory && ($source || $target))
+			{
+				$translatedEntry = &translateSourceTargetPaths($source, $target, $translatedEntry);
+			}
+			else
+			{
+				$translatedEntry .= $sourceTargetClosingBlacketAndSpace;
+			}
+			
+			$translatedEntry .= $resultInfo;
+			$translatedEntry .= "\n";
+			$_ = $translatedEntry;
+		}
+	}
+}
+
+
+
+sub	translateSourceTargetPaths
+{
+	my ($source, $target, $translatedEntry) = @_;
+	my @pathComponents;
+	my $pathComponentsCount;
+	my $index;
+
+	$translatedEntry .= "//->";
+	@pathComponents = split (/\//, $source);
+	$pathComponentsCount = @pathComponents;
+	$index = 0;
+	
+	foreach (@pathComponents)
+	{
+		if (exists $gDirectoryPairs{$_})
+		{
+			$translatedEntry .= $gDirectoryPairs{$_};
+			$gDirectoryPairsReverse{$gDirectoryPairs{$_}} = $_;
+		}
+		else
+		{
+			$translatedEntry .= $_;
+		}
+		
+		$index++;
+		
+		if ($index < $pathComponentsCount) {$translatedEntry .= "/";};
+	};
+	
+	$translatedEntry .= "<-//->";
+	
+	@pathComponents = split (/\//, $target);
+	$pathComponentsCount = @pathComponents;
+	$index = 0;
+
+	foreach (@pathComponents)
+	{
+		if (exists $gDirectoryPairs{$_})
+		{
+			$translatedEntry .= $gDirectoryPairs{$_};
+			$gDirectoryPairsReverse{$gDirectoryPairs{$_}} = $_;
+		}
+		else
+		{
+			$translatedEntry .= $_;
+		}
+		
+		$index++;
+		if ($index < $pathComponentsCount) {$translatedEntry .= "/";};
+	};
+	
+	$translatedEntry .= "<-//:] ";
+
+	return $translatedEntry;
+}
+
+
+
+
+#*****************************************************************************************
+#	Print a URL for a nib item.
+#
+#
+#
+#*****************************************************************************************
+sub printURLforNib
+{
+	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl, $objID_class) = @_;
+	$objID_class =~ m/^(\d+)/;
+	my $objID = $1;
+	
+	my ($OB_Exist, $NB_Exist, $OL_Exist, $NL_Exist) = &entityExist($index);
+	
+	my $OB_URL = &obtainURL($name, $kind, $OB_Exist, $verifyLprojResultRef->{"oldbase"}, "oldbase", $objID);
+	my $NB_URL = &obtainURL($name, $kind, $NB_Exist, $verifyLprojResultRef->{"newbase"}, "newbase", $objID);
+	my $OL_URL = &obtainURL($name, $kind, $OL_Exist, $verifyLprojResultRef->{"oldloc"}, "oldloc", $objID);
+	my $NL_URL = &obtainURL($name, $kind, $NL_Exist, $verifyLprojResultRef->{"newloc"}, "newloc", $objID);
+	
+	print $OUT "\t" x $indentLevl, $OB_URL, "\n";
+	print $OUT "\t" x $indentLevl, $NB_URL, "\n";
+	print $OUT "\t" x $indentLevl, $OL_URL, "\n";
+	print $OUT "\t" x $indentLevl, $NL_URL, "\n";
+}
+
+
+
+#*****************************************************************************************
+#	Print a URL for summary report.
+#
+#
+#
+#*****************************************************************************************
+sub printURLforFile()
+{
+	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl) = @_;
+	
+	my ($OB_Exist, $NB_Exist, $OL_Exist, $NL_Exist) = &entityExist($index);
+	
+	my $OB_URL = &obtainURL($name, $kind, $OB_Exist, $verifyLprojResultRef->{"oldbase"}, "oldbase", "");
+	my $NB_URL = &obtainURL($name, $kind, $NB_Exist, $verifyLprojResultRef->{"newbase"}, "newbase", "");
+	my $OL_URL = &obtainURL($name, $kind, $OL_Exist, $verifyLprojResultRef->{"oldloc"}, "oldloc", "");
+	my $NL_URL = &obtainURL($name, $kind, $NL_Exist, $verifyLprojResultRef->{"newloc"}, "newloc", "");
+	
+	print $OUT "\t" x $indentLevl, $OB_URL, "\n";
+	print $OUT "\t" x $indentLevl, $NB_URL, "\n";
+	print $OUT "\t" x $indentLevl, $OL_URL, "\n";
+	print $OUT "\t" x $indentLevl, $NL_URL, "\n";
+}
+
+
+sub obtainActualPath
+{
+	my ($path, $kind) = @_;
+	my $modifiedPath = "";
+	# print $path, "\t", $kind, "\n";
+
+	if (((scalar %gFilePairsReverse) > 0 ) || ((scalar %gDirectoryPairsReverse) > 0))
+	{
+		my @pathComponents = split (/\//, $path);
+		my $pathComponentsCount = @pathComponents;
+		my $index = 0;
+		
+		
+		foreach (@pathComponents)
+		{
+			# print $_, "\n";
+			$index++;
+			
+			if (($index == $pathComponentsCount) && ($kind eq "file"))
+			{
+				if (exists $gFilePairsReverse{$_})
+				{
+					$modifiedPath .= $gFilePairsReverse{$_};
+				}
+				else
+				{
+					$modifiedPath .= $_;
+				}
+			}
+			else
+			{
+				if (exists $gDirectoryPairsReverse{$_})
+				{
+					$modifiedPath .= $gDirectoryPairsReverse{$_};
+				}
+				else
+				{
+					$modifiedPath .= $_;
+				}
+			}
+			if ($index < $pathComponentsCount) {$modifiedPath .= "/";};
+		};
+	}
+	else
+	{
+		return $path;
+	}
+	
+	return $modifiedPath;
+}
+
+
+sub obtainURL
+{
+	my ($name, $kind, $exist, $lprojDir, $lang, $objID) = @_;
+		
+	my $url = "";
+	
+	unless ($exist)
+	{
+		if ($gEditor eq "bbedit")
+		{
+			$url = "\"n/a\"";
+		}
+		else
+		{
+			$url = "<n/a>";
+		} 
+		
+		return $url;
+	}
+	
+	$name =~ s/^\.?\///;
+	$name =~ s/ \[[DFR ]+\]$//;
+	
+	my $combinedPath = $lprojDir . "/" . $name;
+	my $modifiedCombinedPath = "";
+	
+	if (($lang eq "oldbase") || ($lang eq "newbase"))
+	{
+		$modifiedCombinedPath = &obtainActualPath($combinedPath, $kind);
+	}
+	else
+	{
+		$modifiedCombinedPath = $combinedPath;
+	}
+	
+	if (($kind eq "nib object") || ($kind eq "nib connection"))
+	{
+		if ($gEditor eq "bbedit")
+		{
+			$url = "open " . "\"" . "nib:/" . &fixURL($modifiedCombinedPath) . "?" . $objID . "\"";
+		}
+		else
+		{
+			$url = "<" . "nib:/" . $modifiedCombinedPath . "?" . $objID . ">";
+		}
+	}
+	else
+	{
+		if ($gEditor eq "bbedit")
+		{
+			$url = "open " . "\"" . "file://localhost" . &fixURL($modifiedCombinedPath) . "\"";
+		}
+		else
+		{
+			$url = "<" . "file://localhost" . $modifiedCombinedPath . ">";
+		}
+	}
+	
+	# print $OUT "\n";
+	return $url;
+}
+
+# Fix a URL
+sub fixURL
+{
+	my $url = shift;
+	
+	# Replace a space with "%20".
+	$url =~ s/ /\%20/g;
+	
+	return $url;
+}
+
+
+
+__DATA__
+
+

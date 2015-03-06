@@ -1,0 +1,346 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AACheckProblemNibs
+##        Author:	Stanley Au-Yeung
+##          Date:	Saturday, June 30, 2007.
+##
+##   Description:	What it does...
+##
+##                       Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	07/03/07	16:00	SA		version 1.0.2
+##	07/03/07	16:00	SA		Modified the .rpt format
+##	07/03/07	12:00	SA		version 1.0.1
+##	07/03/07	12:00	SA		Modified the .rpt format
+##	06/30/07	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#=============================================================================================
+#	Modules Used
+#=============================================================================================
+
+use Getopt::Long;
+use Error qw(:try);
+use File::Basename;
+use File::Find;
+
+
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+$version = "1.0.2";
+
+my ($gAppleGlotEnvFullPath, $h, $v, $getVersion);
+
+&usage()
+    unless @ARGV and GetOptions(
+    'glot=s'                   => \$gAppleGlotEnvFullPath,
+    'h'                        => \$h,
+    'v'                        => \$v,
+    'getVersion'               => \$getVersion,
+    );
+
+
+if ($h)
+{
+	&usage();
+}
+
+
+if ($v)
+{
+	print "Version $version\n";
+}
+
+
+if ($getVersion)
+{
+	print "$version";
+}
+
+if ($gAppleGlotEnvFullPath ne "")
+{
+	$gAppleGlotEnvFullPath =~ s|/?$|/|;	# has to end with one slash
+}
+
+
+#---------------------------------------------------------------------------------------------
+#  Main
+#---------------------------------------------------------------------------------------------
+
+if ((-d $gAppleGlotEnvFullPath))
+{
+	my $appleGlotEnvName = GetDirectoryBaseName($gAppleGlotEnvFullPath);
+	my $appleGlotEnvNewBasePath = $gAppleGlotEnvFullPath . "_NewBase/";
+	my $appleGlotEnvNewLocPath = $gAppleGlotEnvFullPath . "_NewLoc/";
+	my $language = GetLprojLanguage($appleGlotEnvNewLocPath);
+	my $problemNibsTxtReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName. "_ProblemNibs.txt";
+	my $problemNibsHtmlReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName . "_ProblemNibs.html";
+	my $problemNibsReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName . "_ProblemNibs.rpt";
+
+
+	system "sudo touch /usr/bin/nibtool";
+	# system "pcx -ski -sks -skt -skr -sktiff $appleGlotEnvNewBasePath $appleGlotEnvNewLocPath -map 'English.lproj/$language.lproj' -inclnibattr 'm/^(alignment|widgetType)$/;' | fpcx -l > $problemNibsTxtReport";
+	system "pcx -ski -sks -skt -skr -sktiff -objinfo $appleGlotEnvNewBasePath $appleGlotEnvNewLocPath -map 'English.lproj/$language.lproj' -inclnibattr 'm/^(alignment|gButtonBehavior|bezelStyle|bordered|controlSize|hasHorizontalRuler|hasVerticalRuler|widgetType|contentRectOrigin)$/;' -maxnibtool 4 -i | fpcx -l > $problemNibsTxtReport";
+	
+	open(FILECONTENT, "<$problemNibsTxtReport") or die "Cannot open '$problemNibsTxtReport': $!";
+		@fileContent = <FILECONTENT>;
+	close(FILECONTENT);
+
+
+	open nibsHtmlReportFile, "> $problemNibsHtmlReport" or die "Failed to open $problemNibsHtmlReport\n";
+	open nibsReportFile, "> $problemNibsReport" or die "Failed to open $problemNibsReport\n";
+
+	my $line;
+	my $lastNewBaseNibFilePath = "";
+	my $lastNewLocNibFilePath = "";
+	my $lastPrintedNewLocNibFilePath = "";
+	my $lastOID = 0;
+
+
+	print nibsHtmlReportFile "<html>
+
+<head>
+<style>
+<!--table {}
+.style0
+	{text-align:general;
+	vertical-align:bottom;
+	white-space:nowrap;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	border:none;}
+td
+	{padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	white-space:nowrap;}
+.xl24
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:none;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#99CCFF;}
+.xl25
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#99CCFF;}
+.xl26
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:none;
+	background:#99CCFF;}
+.xl27
+	{border:1.0pt solid windowtext;}
+-->
+</style>
+</head>
+
+<body >
+
+<table border=0 cellpadding=0 cellspacing=0 width=561 style='border-collapse:
+ collapse;table-layout:fixed'>
+ <col width=300>
+ <col width=200>
+ <col width=400>
+ <col width=400>
+ <tr height=17>
+  <td height=17 class=xl24 width=100>Component</td>
+  <td class=xl25 width=200>Problem</td>
+  <td class=xl25 width=400>NewLoc nib</td>
+  <td class=xl25 width=400>NewBase nib</td>
+ </tr>";
+
+
+	foreach $line(@fileContent)
+	{
+		if ($line =~ m/#  \"(.*?)\/_NewBase\/(.*?).nib\"$/)
+		{
+			$line =~ m/#  \"(.*?)\"$/;
+			$lastNewBaseNibFilePath = $1;
+		}
+		elsif ($line =~ m/#  \"(.*?)\/_NewLoc\/(.*?).nib\"$/)
+		{
+			$line =~ m/#  \"(.*?)\"$/;
+			$lastNewLocNibFilePath = $1;
+		}
+		elsif (($line =~ m/--- alignment ---/)
+				 || ($line =~ m/--- widgetType ---/)
+				 || ($line =~ m/--- cell.widgetType ---/))
+		{
+			$line =~ m/--- (.*?) ---/;
+			$problem = $1;
+
+			$lastNewLocNibFilePath =~ m/(.*?).lproj\/(.*)$/;
+			$lastNewLocNibFile = $2;
+			
+			$lastNewBaseNibFilePath =~ m/(.*?).lproj\/(.*)$/;
+			$lastNewBaseNibFile = $2;
+
+			
+			$lastNewBaseNibFilePath =~ m/(.*?)_NewBase\/(.*?)\/(.*)$/;
+			$component = $2;
+
+		
+			print nibsHtmlReportFile "<tr height=14>\n";
+			# print nibsHtmlReportFile "<td height=14 class=xl27>$component</td>\n";
+			print nibsHtmlReportFile "<td class=xl27><a href=\"file://localhost$lastNewLocNibFilePath\">$component</a></td>\n";
+			print nibsHtmlReportFile "<td height=14 class=xl27>$problem</td>\n";
+			print nibsHtmlReportFile "<td class=xl27><a href=\"nib:/$lastNewLocNibFilePath?$lastOID\">$lastNewLocNibFile?$lastOID</a></td>\n";
+			print nibsHtmlReportFile "<td class=xl27><a href=\"nib:/$lastNewBaseNibFilePath?$lastOID\">$lastNewBaseNibFile?$lastOID</a></td>\n";
+            print nibsHtmlReportFile "</tr>\n";
+			
+			if ($lastPrintedNewLocNibFilePath ne $lastNewLocNibFilePath)
+			{
+				$lastPrintedNewLocNibFilePath = $lastNewLocNibFilePath;
+				
+				print nibsReportFile "\n";
+				print nibsReportFile "=== $component ($lastNewLocNibFile) ===\n";
+				print nibsReportFile "<file://localhost$lastNewLocNibFilePath>\n";
+				print nibsReportFile "<file://localhost$lastNewBaseNibFilePath>\n";
+			}
+			
+			print nibsReportFile "\t---- $problem ($lastOID) ----\n";
+			print nibsReportFile "\t<nib:/$lastNewLocNibFilePath?$lastOID>\n";
+			print nibsReportFile "\t<nib:/$lastNewBaseNibFilePath?$lastOID>\n";
+			print nibsReportFile "\n";
+		}
+		elsif ($line =~ m/^    --- (.*?) ---/)
+		{
+			$lastOID = $1;
+		}
+	}
+
+	print nibsHtmlReportFile "</table>
+</body>
+</html>";
+
+
+	close nibsHtmlReportFile;
+	close nibsReportFile;
+}
+else
+{
+
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetDirectoryBaseName
+#---------------------------------------------------------------------------------------------
+
+sub GetDirectoryBaseName
+{
+	my ($inDirectoryPath) = @_;
+
+	$inDirectoryPath =~ s|/$||;		# remove trailing slash
+
+	return basename($inDirectoryPath);
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetLprojLanguage
+#---------------------------------------------------------------------------------------------
+
+%gFindLanguageResult = ();
+
+sub SetLocLproj
+{
+	if (m/(.+).lproj$/ && ($1 ne "English") && ($1 ne "en"))
+	{
+		#--Debug----------------------------------------------------------------------------------
+		print STDERR "[Debug:SetLocLproj] Language: \"$1\"\n" if ($gDebug);
+		#-----------------------------------------------------------------------------------------
+
+		$gFindLanguageResult{$1}++;
+	}
+}
+
+sub GetLprojLanguage
+{
+	my($inPath) = @_;
+	my %lprojs = ();
+	
+	%gFindLanguageResult = ();
+	find \&SetLocLproj, $inPath;
+
+	unless (scalar %gFindLanguageResult)
+	{
+		printf STDERR "\n### WARNING: No localized .lproj in $inPath.\n";
+		# exit 1;
+	}
+
+	my @tmp = sort {$gFindLanguageResult{$a} <=> $gFindLanguageResult{$b}} keys %gFindLanguageResult;
+
+	#--Debug----------------------------------------------------------------------------------
+	print STDERR "[Debug:GetLprojLanguage] Language: \"$tmp[$#array]\"\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+
+	return $tmp[$#array];
+}
+
+
+
+
+#---------------------------------------------------------------------------------------------
+#	usage
+#---------------------------------------------------------------------------------------------
+
+sub usage
+{
+    print "AACheckProblemNibs [Version $version] - Check problem .nib files.\n\n";
+    print "  -glot	            - AppleGlot Env Path\n";
+    print "  -h           		- Show this help\n";
+    exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

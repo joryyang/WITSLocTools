@@ -1,0 +1,2003 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AACheckLKCX
+##        Author:	Stanley Au-Yeung
+##          Date:	Thursday, July 28, 2005
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	07/28/05	12:00	SA		Original version
+##
+##*****************************************************************************
+
+# The outer "while" loop echos the input to the output while we are processing it.
+# Since "print" is the last statement we will only pass on input which we have
+# successfully finished processing.
+
+BEGIN {
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+	
+};
+
+
+#=============================================================================================
+#	Modules Used
+#=============================================================================================
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Basename;
+use DiskImage;
+
+use Foundation;
+use AALocUtilities;
+use AALocFileUtilities;
+use AALocEnvUtilities;
+
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+# set version string
+$version = "1.0";
+
+$gLogFile;
+$gCountryCode = "";
+$gLocEnvironmentPath = "";
+$gLKCXInfoPath = "";
+$gAGEnvironmentPath = "";
+$gAGEnvironmentLogsPath = "";
+$gNonAGEnvironmentPath = "";
+$gSubmissionPath = "";
+$gNewBasePath = "";
+$gNewLocPath = "";
+$gLogsPath = "";
+$gNonAGNewBasePath = "";
+$gAGCrossCheckLogFile = "";
+$gCheckLKCXLogFile = "";
+$gCheckLKCXComponentsReportFile = "";
+$gTotalNumOfError = 0;
+$gNumOfComponents = 0;
+@gComponentsList = ();
+$gCheckAllLanguages = 0;
+$gCheckComponentsPlist = 0;
+
+%gFindLanguageResult = ();
+
+use constant KBase		=> 0;
+use constant kLoc		=> 1;
+
+
+
+#---------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&Usage();
+	exit (2);
+}
+
+if (@ARGV > 3)
+{
+	print "\n### ERROR: Found too many parameters.\n";
+	&Usage();
+	exit (2);
+}
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-getVersion")
+	{
+		print $version;
+		exit (2);
+	}
+
+	if ($item eq "-checkAllLanguages")
+	{
+		$gCheckAllLanguages = 1;
+	}
+	elsif (($item eq "-checkComponentPlist"))
+	{
+		$gCheckComponentsPlist = 1;
+	}
+	else
+	{
+		$gLocEnvironmentPath = $item;
+	}
+}
+
+if (-d $gLocEnvironmentPath)
+{
+	$gLocEnvironmentPath =~ s|/?$|/|;	# has to end with one slash
+	my $locEnvReportsPath = AALocEnvUtilities::GetReportsPathFromLocEnv($gLocEnvironmentPath);
+
+	
+	$gAGEnvironmentPath = $gLocEnvironmentPath . "LocEnv/GlotEnv/";
+	
+	
+	# SA $gSubmissionPath = $gLocEnvironmentPath . "Submission/";
+	$gAGCrossCheckLogFile = $gAGEnvironmentPath . "_Logs/ag3envcrosscheck_log.txt";
+	$gNonAGEnvironmentPath = $gLocEnvironmentPath . "LocEnv/GlotEnv_NonGlottables/";
+	$gNonAGNewBasePath = $gNonAGEnvironmentPath . "_NewBase/";
+
+	
+
+	$gCheckLKCXLogFile = $locEnvReportsPath . "GlotEnv_checkLocKitLog.txt";
+	$gCheckLKCXComponentsReportFile = $gLKCXInfoPath . $locEnvName . "_componentsReport.html";
+
+	
+	if (!(-d $gAGEnvironmentPath))
+	{
+		print "\n### ERROR: cannot find AppleGlot Env in '$gLocEnvironmentPath'.\n";
+		exit(1);
+	}
+
+	$gNewBasePath = $gAGEnvironmentPath . "_NewBase";
+	$gNewLocPath = $gAGEnvironmentPath . "_NewLoc";
+	$gOldBasePath = $gAGEnvironmentPath . "_OldBase";
+	$gOldLocPath = $gAGEnvironmentPath . "_OldLoc";
+	$gAGEnvironmentLogsPath = $gAGEnvironmentPath . "_Logs";
+
+	CheckLKCX();
+}
+else
+{
+	print "\n### ERROR: specified path '$gLocEnvironmentPath' doesn't exist.\n";
+	exit(1);
+}
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#	Function Definitions
+#=============================================================================================
+
+#---------------------------------------------------------------------------------------------
+#	GetFileURL
+#---------------------------------------------------------------------------------------------
+
+sub GetFileURL
+{
+	my($inFilePath) = @_;
+	my $fileURL = $inFilePath;
+	
+
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+
+	$fileURL =~ s/\///;
+	$fileURL = "<file://localhost/$fileURL>";
+
+	return $fileURL;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetLocLanguage
+#---------------------------------------------------------------------------------------------
+
+sub GetLocLanguage
+{
+	my($inPath) = @_;
+	my %lprojs = ();
+	
+	%gFindLanguageResult = ();
+	find \&SetLocLproj, $inPath;
+
+	unless (scalar %gFindLanguageResult)
+	{
+		return "";
+	}
+
+	my @tmp = sort {$gFindLanguageResult{$a} <=> $gFindLanguageResult{$b}} keys %gFindLanguageResult;
+		
+	return $AALocUtilities::kLprojLongForm{$tmp[$#array]};
+}
+
+sub SetLocLproj
+{
+	if (m/(.+).lproj$/ && ($1 ne "English") && ($1 ne "en"))
+	{	
+		$gFindLanguageResult{$1}++;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetLprojCompatibleVersion
+#---------------------------------------------------------------------------------------------
+
+sub GetLprojCompatibleVersion
+{
+	my($inComponent, $inLoc) = @_;
+	my $outLprojCompatibleVersion = 99999;
+
+	my $serachPath = $gOldBasePath . "/" . $inComponent;
+	my $lprojLanguage = "English";
+	
+	if ($inLoc eq kLoc)
+	{
+		$serachPath = $gOldLocPath . "/" . $inComponent;
+		$lprojLanguage = GetLocLanguage($gOldLocPath);
+
+		chomp(@searchResult = `find "$serachPath" -type f \\( -path "*/$lprojLanguage.lproj/locversion.plist" \\)`);
+
+
+		my $shortFormLanguage = $AALocUtilities::kLprojShortForm{$lprojLanguage};
+
+		if ($shortFormLanguage ne $lprojLanguage)
+		{
+			chomp(@searchShortFormResult = `find "$serachPath" -type f \\( -path "*/$shortFormLanguage.lproj/locversion.plist" \\)`);
+			push(@searchResult, @searchShortFormResult);
+		}
+	}
+	else
+	{
+		chomp(@searchResult = `find "$serachPath" -type f \\( -path "*/$lprojLanguage.lproj/locversion.plist" \\)`);
+	}
+
+
+	foreach $file (@searchResult)
+	{
+		if (open(LVFILE, "$file"))
+		{
+			$saveRS = $/;
+			undef $/;
+			$locVersData = <LVFILE>;
+			$/ = $saveRS;
+			close (LVFILE);
+				
+			$locVersData =~ m/LprojCompatibleVersion<\/key>\s*<string>(.*?)<\/string>/;
+			$lprojCompatibleVersion = $1;
+			
+			# if ($lprojCompatibleVersion < $outLprojCompatibleVersion)
+			{
+				$outLprojCompatibleVersion = $lprojCompatibleVersion;
+			}
+		}
+	}
+
+	return $outLprojCompatibleVersion;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CompareLprojCompatibleVersion
+#---------------------------------------------------------------------------------------------
+
+sub CompareLprojCompatibleVersion
+{
+	my($inComponent) = @_;
+	my $outResult = "(-999 vs -999)";
+
+	my $serachPath = $gOldLocPath . "/" . $inComponent;
+	my $lprojLanguage = GetLocLanguage($gOldLocPath);
+
+
+	chomp(@searchResult = `find "$serachPath" -type f \\( -path "*/$lprojLanguage.lproj/locversion.plist" \\)`);
+
+	foreach $file (@searchResult)
+	{
+		my $oldLoclprojCompatibleVersion = -1;
+		my $oldBaselprojCompatibleVersion = -1;
+	
+		if (open(LVFILE, "$file"))
+		{
+			$saveRS = $/;
+			undef $/;
+			$locVersData = <LVFILE>;
+			$/ = $saveRS;
+			close (LVFILE);
+				
+			$locVersData =~ m/LprojCompatibleVersion<\/key>\s*<string>(.*?)<\/string>/;
+			$oldLoclprojCompatibleVersion = $1;
+		}
+		
+		
+		$oldBaseFile = $file;
+
+		$oldBaseFile =~ s/$lprojLanguage.lproj/English.lproj/;
+		$oldBaseFile =~ s/_OldLoc/_OldBase/;
+
+		if (!(-e "$oldBaseFile"))
+		{
+			$oldBaseFile = $file;
+			$oldBaseFile =~ s/$inLprojLanguage.lproj/en.lproj/;
+			$oldBaseFile =~ s/_OldLoc/_OldBase/;
+		}
+
+		if (-e "$oldBaseFile")
+		{
+			if (open(LVFILE, "$oldBaseFile"))
+			{
+				$saveRS = $/;
+				undef $/;
+				$locVersData = <LVFILE>;
+				$/ = $saveRS;
+				close (LVFILE);
+					
+				$locVersData =~ m/LprojCompatibleVersion<\/key>\s*<string>(.*?)<\/string>/;
+				$oldBaselprojCompatibleVersion = $1;
+			}
+		}
+		
+		$outResult = "($oldBaselprojCompatibleVersion vs $oldLoclprojCompatibleVersion)";
+		
+		if ($oldLoclprojCompatibleVersion ne $oldBaselprojCompatibleVersion)
+		{
+			last;
+		}
+	}
+
+	return $outResult;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CompareLprojCompatibleVersionResult
+#---------------------------------------------------------------------------------------------
+
+sub CompareLprojCompatibleVersionResult
+{
+	my($inComponent) = @_;
+
+	my $serachPath = $gOldLocPath . "/" . $inComponent;
+	my $lprojLanguage = GetLocLanguage($gOldLocPath);
+
+
+	chomp(@searchResult = `find "$serachPath" -type f \\( -path "*/$lprojLanguage.lproj/locversion.plist" \\)`);
+
+	foreach $file (@searchResult)
+	{
+		my $oldLoclprojCompatibleVersion = -1;
+		my $oldBaselprojCompatibleVersion = -1;
+	
+		if (open(LVFILE, "$file"))
+		{
+			$saveRS = $/;
+			undef $/;
+			$locVersData = <LVFILE>;
+			$/ = $saveRS;
+			close (LVFILE);
+				
+			$locVersData =~ m/LprojCompatibleVersion<\/key>\s*<string>(.*?)<\/string>/;
+			$oldLoclprojCompatibleVersion = $1;
+		}
+		
+		
+		$oldBaseFile = $file;
+
+		$oldBaseFile =~ s/$lprojLanguage.lproj/English.lproj/;
+		$oldBaseFile =~ s/_OldLoc/_OldBase/;
+
+		if (!(-e "$oldBaseFile"))
+		{
+			$oldBaseFile = $file;
+			$oldBaseFile =~ s/$inLprojLanguage.lproj/en.lproj/;
+			$oldBaseFile =~ s/_OldLoc/_OldBase/;
+		}
+
+		if (-e "$oldBaseFile")
+		{
+			if (open(LVFILE, "$oldBaseFile"))
+			{
+				$saveRS = $/;
+				undef $/;
+				$locVersData = <LVFILE>;
+				$/ = $saveRS;
+				close (LVFILE);
+					
+				$locVersData =~ m/LprojCompatibleVersion<\/key>\s*<string>(.*?)<\/string>/;
+				$oldBaselprojCompatibleVersion = $1;
+			}
+		}
+		
+		$outResult = "($oldBaselprojCompatibleVersion vs $oldLoclprojCompatibleVersion)";
+		
+		if ($oldLoclprojCompatibleVersion ne $oldBaselprojCompatibleVersion)
+		{
+			$temp = $oldBaseFile;
+			$temp =~ s/$gOldBasePath//;
+			print gLogFile "	$temp ($oldBaselprojCompatibleVersion vs $oldLoclprojCompatibleVersion)\n";
+			#	$temp = $file;
+			#	$temp =~ s/$gOldLocPath//;
+			#	print gLogFile "	$temp ($oldLoclprojCompatibleVersion)\n";
+		}
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GenerateComponentsPlistReport
+#---------------------------------------------------------------------------------------------
+
+sub GenerateComponentsPlistReport
+{
+	my $plistObject;
+	my $componentListObject;
+	my $numOfError = 0;
+	my $foundPlist = 0;
+	my $componentsPlistFile = $gLKCXInfoPath . "component.plist";
+
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Generating component.plist\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	open componentsPlistReportFile, "> $gCheckLKCXComponentsReportFile" or die "Failed to open $gCheckLKCXComponentsReportFile\n";
+
+	print componentsPlistReportFile "<html>
+
+<!--This file created by AACheckLKCX version $version-->
+
+<head>
+<style>
+<!--table {}
+.style0
+	{text-align:general;
+	vertical-align:bottom;
+	white-space:nowrap;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	border:none;}
+td
+	{padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	white-space:nowrap;}
+.xl24
+	{font-size:10.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:none;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#e9e9e9;}
+.xl25
+	{font-size:10.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#e9e9e9;}
+.xl26
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:none;
+	background:#e9e9e9;}
+.xl27
+	{font-size:8.0pt; border:1.0pt solid windowtext;}
+.xl28
+	{font-size:8.0pt; border:1.0pt solid windowtext;
+	background:#FF0033;}
+-->
+</style>
+</head>
+
+<body >
+
+<table border=0 cellpadding=5 cellspacing=0 width=561 style='border-collapse:
+ collapse;table-layout:fixed'>
+ <col width=250>
+ <col width=380>
+ <col width=380>
+ <col width=380>
+ <tr height=17>
+  <td height=17 class=xl24 width=250>Components</td>
+  <td class=xl25 width=380>NewBase</td>
+  <td class=xl25 width=380>OldBase</td>
+  <td class=xl25 width=380>OldLoc</td>
+ </tr>";
+
+
+	$plistObject = NSDictionary->dictionaryWithContentsOfFile_($componentsPlistFile);
+
+	if ($plistObject and $$plistObject)
+	{
+		$componentListObject = $plistObject->objectForKey_("Projects");
+
+		if ($componentListObject and $$componentListObject)
+		{
+			for ($index = 0; $index < $gNumOfComponents; $index++)
+			{
+				AALocUtilities::PrintLog("Generating component $gComponentsList[$index]\n");
+
+				$componentObject = $componentListObject->objectForKey_($gComponentsList[$index]);
+
+				
+				if (! $componentObject or ! $$componentObject)
+				{
+					print componentsPlistReportFile "<tr height=14>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>$gComponentsList[$index]</td>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+				}
+				else
+				{
+					$newBaseObject = $componentObject->objectForKey_("NewBase");
+					$oldBaseObject = $componentObject->objectForKey_("OldBase");
+					$oldLocObject = $componentObject->objectForKey_("OldLoc");
+					
+
+					$newBase = $newBaseObject->description()->UTF8String();
+
+					print componentsPlistReportFile "<tr height=14>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>$gComponentsList[$index]</td>\n";
+					print componentsPlistReportFile "<td height=14 class=xl27>$newBase</td>\n";
+
+					if (! $oldBaseObject or ! $$oldBaseObject
+						or ! $oldLocObject or ! $$oldLocObject)
+					{
+						print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+						print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+					}
+					else
+					{
+						$localizedOldBaseObject = $oldBaseObject->objectForKey_($gCountryCode);
+						$localizedOldLocObject = $oldLocObject->objectForKey_($gCountryCode);
+						
+						if (! $localizedOldBaseObject or ! $$localizedOldBaseObject
+							or ! $localizedOldLocObject or ! $$localizedOldLocObject)
+						{
+							print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+							print componentsPlistReportFile "<td height=14 class=xl27>-</td>\n";
+						}
+						else
+						{
+							$localizedOldBase = $localizedOldBaseObject->description()->UTF8String();
+							$localizedOldLoc = $localizedOldLocObject->description()->UTF8String();
+							
+							
+							($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldBase);
+							$localizedOldBaseVersion = $componentAndBuildTrain . "." . $version;
+							
+							($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldLoc);
+							$localizedOldLocVersion = $componentAndBuildTrain . "." . $version;
+						
+							
+							if ($localizedOldBaseVersion ne $localizedOldLocVersion)
+							{
+								print componentsPlistReportFile "<td height=14 class=xl28>$localizedOldBase</td>\n";
+								print componentsPlistReportFile "<td height=14 class=xl28>$localizedOldLoc</td>\n";
+							}
+							else
+							{
+								print componentsPlistReportFile "<td height=14 class=xl27>$localizedOldBase</td>\n";
+								print componentsPlistReportFile "<td height=14 class=xl27>$localizedOldLoc</td>\n";
+							}
+						}
+					}
+				}
+				
+				print componentsPlistReportFile "</tr>\n";
+			}
+		}
+	}
+	else
+	{
+		AALocUtilities::PrintLog("Cannot find component.plist\n");
+	}
+	
+	
+
+	print componentsPlistReportFile "</table>
+</body>
+</html>";
+
+
+	close componentsPlistReportFile;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckComponentsPlist
+#---------------------------------------------------------------------------------------------
+
+sub CheckComponentsPlist
+{
+	my $plistObject;
+	my $componentListObject;
+	my $numOfError = 0;
+	my $foundPlist = 0;
+	my $componentsPlistFile = $gLKCXInfoPath . "component.plist";
+
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking component.plist\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# component.plist Checking Result (Please ignore the following result for LXRip projects)\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	$plistObject = NSDictionary->dictionaryWithContentsOfFile_($componentsPlistFile);
+
+	if ($plistObject and $$plistObject)
+	{
+		$componentListObject = $plistObject->objectForKey_("Projects");
+
+		if ($componentListObject and $$componentListObject)
+		{
+			$foundPlist = 1;
+			
+			my $compInfoError = 0;
+	
+			for ($index = 0; $index < $gNumOfComponents; $index++)
+			{
+				AALocUtilities::PrintLog("Checking component $gComponentsList[$index]\n");
+
+				$componentObject = $componentListObject->objectForKey_($gComponentsList[$index]);
+				$newBaseObject = $componentObject->objectForKey_("NewBase");
+				$oldBaseObject = $componentObject->objectForKey_("OldBase");
+				$oldLocObject = $componentObject->objectForKey_("OldLoc");
+				
+				$compInfoError = 0;
+				
+				if (! $componentObject or ! $$componentObject)
+				{
+					print gLogFile "Cannot find component info of $gComponentsList[$index]\n";
+					$numOfError++;
+					$compInfoError++;
+				}
+				else
+				{
+					if (! $oldBaseObject or ! $$oldBaseObject
+						or ! $oldLocObject or ! $$oldLocObject)
+					{
+						if (! $newBaseObject or ! $$newBaseObject)
+						{
+							print gLogFile "$gComponentsList[$index]: Cannot find component info\n";
+							$numOfError++;
+							$compInfoError++;
+						}
+						else
+						{
+							print gLogFile "$gComponentsList[$index]: Cannot find OldBase/OldLoc info\n";
+							$numOfError++;
+							$compInfoError++;
+						}
+					}
+					else
+					{
+						$localizedOldBaseObject = $oldBaseObject->objectForKey_($gCountryCode);
+						$localizedOldLocObject = $oldLocObject->objectForKey_($gCountryCode);
+						
+						if (! $localizedOldBaseObject or ! $$localizedOldBaseObject
+							or ! $localizedOldLocObject or ! $$localizedOldLocObject)
+						{
+							print gLogFile "$gComponentsList[$index]: no OldBase/OldLoc info\n";
+							$numOfError++;
+							$compInfoError++;
+						}
+						else
+						{
+							$localizedOldBase = $localizedOldBaseObject->description()->UTF8String();
+							$localizedOldLoc = $localizedOldLocObject->description()->UTF8String();
+							
+							($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldBase);
+							$localizedOldBaseVersion = $componentAndBuildTrain . "." . $version;
+							
+							($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldLoc);
+							$localizedOldLocVersion = $componentAndBuildTrain . "." . $version;
+						
+							
+							if ($localizedOldBaseVersion ne $localizedOldLocVersion)
+							{
+								#	my $OldBaseLprojCompatibleVersion = GetLprojCompatibleVersion($gComponentsList[$index], KBase);
+								#	my $OldLocLprojCompatibleVersion = GetLprojCompatibleVersion($gComponentsList[$index], kLoc);
+
+								#	print gLogFile "$gComponentsList[$index]: OldBase and OldLoc don't match\n";
+								#	print gLogFile "\t$localizedOldBase ($OldBaseLprojCompatibleVersion)\n";
+								#	print gLogFile "\t$localizedOldLoc ($OldLocLprojCompatibleVersion)\n";
+								
+								my $lprojResult = CompareLprojCompatibleVersion($gComponentsList[$index]);
+
+								print gLogFile "$gComponentsList[$index]: OldBase and OldLoc don't match $lprojResult\n";
+								print gLogFile "\t$localizedOldBase\n";
+								print gLogFile "\t$localizedOldLoc\n";
+								
+								CompareLprojCompatibleVersionResult();
+								
+								$numOfError++;
+								$compInfoError++;
+							}
+						}
+					}
+				}
+				
+				if ($compInfoError != 0)
+				{
+					print gLogFile "\n";
+				}
+			}
+		}
+	}
+	else
+	{
+		AALocUtilities::PrintLog("Cannot find component.plist\n");
+		print gLogFile "Cannot find component.plist\n";
+		
+		$numOfError++;
+	}
+	
+	
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckComponentsPlistByLanguage
+#---------------------------------------------------------------------------------------------
+
+sub CheckComponentsPlistByLanguage
+{
+	my($inLanguage) = @_;
+	my $plistObject;
+	my $componentListObject;
+	my $numOfError = 0;
+	my $foundPlist = 0;
+	
+	
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking Components .plist\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# Components .plist Checking Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	chomp(@searchResult = `find "$gLKCXInfoPath" -type f | grep ".plist"`);
+
+	
+	foreach $file (@searchResult)
+	{
+		$plistObject = NSDictionary->dictionaryWithContentsOfFile_($file);
+
+		if ($plistObject and $$plistObject)
+		{
+			$componentListObject = $plistObject->objectForKey_("Projects");
+	
+			if ($componentListObject and $$componentListObject)
+			{
+				$foundPlist = 1;
+				
+				my $compInfoError = 0;
+		
+				for ($index = 0; $index < $gNumOfComponents; $index++)
+				{
+					$componentObject = $componentListObject->objectForKey_($gComponentsList[$index]);
+					$newBaseObject = $componentObject->objectForKey_("NewBase");
+					$oldBaseObject = $componentObject->objectForKey_("OldBase");
+					$oldLocObject = $componentObject->objectForKey_("OldLoc");
+					
+					$compInfoError = 0;
+					
+					if (! $componentObject or ! $$componentObject)
+					{
+						print gLogFile "Cannot find component info of $gComponentsList[$index]\n";
+						$numOfError++;
+						$compInfoError++;
+					}
+					else
+					{
+						if (! $newBaseObject or ! $$newBaseObject
+							or ! $oldBaseObject or ! $$oldBaseObject
+							or ! $oldLocObject or ! $$oldLocObject)
+						{
+							print gLogFile "Cannot find component info of $gComponentsList[$index]\n";
+							$numOfError++;
+							$compInfoError++;
+						}
+						else
+						{
+							$baseOldBaseVersion = "";
+							$oldBaseDontMatch = 0;
+							
+							$localizedOldBaseObject = $oldBaseObject->objectForKey_($inLanguage);
+							$localizedOldLocObject = $oldLocObject->objectForKey_($inLanguage);
+							
+							if (! $localizedOldBaseObject or ! $$localizedOldBaseObject
+								or ! $localizedOldLocObject or ! $$localizedOldLocObject)
+							{
+								print gLogFile "$gComponentsList[$index] $inLanguage no OldBase/OldLoc\n";
+								$numOfError++;
+								$compInfoError++;
+							}
+							else
+							{
+								$localizedOldBase = $localizedOldBaseObject->description()->UTF8String();
+								$localizedOldLoc = $localizedOldLocObject->description()->UTF8String();
+								
+								($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldBase);
+								$localizedOldBaseVersion = $componentAndBuildTrain . "." . $version;
+								
+								($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldLoc);
+								$localizedOldLocVersion = $componentAndBuildTrain . "." . $version;
+							
+								
+								if ($localizedOldBaseVersion ne $localizedOldLocVersion)
+								{
+									print gLogFile "$gComponentsList[$index] $inLanguage OldBase and OldLoc don't match: ";
+									print gLogFile "$localizedOldBase, $localizedOldLoc\n";
+								
+									$numOfError++;
+									$compInfoError++;
+								}
+							}
+		
+		
+							#-------------------------------------------------------------------------
+							#	Compare Old Base
+							#-------------------------------------------------------------------------
+							
+							if ($localizedOldBaseObject and $$localizedOldBaseObject)
+							{
+								$localizedOldBase = $localizedOldBaseObject->description()->UTF8String();
+								($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldBase);
+								$baseOldBaseVersion = $componentAndBuildTrain . "." . $version;
+							
+								$oldBaseCompareError = 0;
+								
+								for $language ("J", "FU", "D", "N", "T", "E", "CH", "KH", "TA", "S", "DK", "H", "K", "BR")
+								{
+									$localizedOldBaseObject = $oldBaseObject->objectForKey_($language);
+									
+									if ($localizedOldBaseObject and $$localizedOldBaseObject)
+									{
+										$localizedOldBase = $localizedOldBaseObject->description()->UTF8String();
+										($componentAndBuildTrain, $version, $submissionNum, $others) = split(/\./, $localizedOldBase);
+										$localizedOldBaseVersion = $componentAndBuildTrain . "." . $version;
+									
+										if ($baseOldBaseVersion ne $localizedOldBaseVersion)
+										{
+											if ($oldBaseCompareError == 0)
+											{
+												print gLogFile "$gComponentsList[$index] $inLanguage OldBase ($baseOldBaseVersion) don't match other language(s)\n";
+											}
+										
+											print gLogFile "$language: $localizedOldBaseVersion\n";
+											
+											$oldBaseCompareError++;
+											$numOfError++;
+											$compInfoError++;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+					if ($compInfoError != 0)
+					{
+						print gLogFile "\n";
+					}
+				}
+			}
+		}
+		
+		if ($foundPlist == 1)
+		{
+			last;
+		}
+	}
+	
+	if ($foundPlist == 0)
+	{
+		AALocUtilities::PrintLog("Cannot find components .plist\n");
+		print gLogFile "Cannot find components .plist\n";
+		
+		$numOfError++;
+	}
+	
+	
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckAppleGlotEmptyFolder
+#---------------------------------------------------------------------------------------------
+
+sub CheckAppleGlotEmptyFolder
+{
+	my($inPath) = @_;
+	my $outNumOfError = 0;
+	
+	
+	opendir(directory, $inPath);
+    @searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+	
+	foreach $file (@searchResult)
+	{
+		my $fullPath = $inPath . "/" . $file;
+		
+		opendir(directory, $fullPath);
+		@searchResult2 = grep { !/^\./} readdir(directory);
+		closedir(directory);
+		
+		if (scalar(@searchResult2) == 0)
+		{
+			print gLogFile "$fullPath empty folder\n";
+	
+			$outNumOfError++;
+		}
+	}
+	
+	
+	return $outNumOfError;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckAppleGlotStringsFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckAppleGlotStringsFiles
+{
+	my $numOfCheckingError = 0;
+	my $numOfError = 0;
+	my $error = "";
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment .strings Files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment .strings Files Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	# chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/English.lproj/*" \\)  | grep -v ".plist.strings"  | grep -v ".nib.strings" | grep ".strings"`);
+	chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/English.lproj/*.strings" -or -path "*/en.lproj/*.strings" \\)  | grep -v ".plist.strings"  | grep -v ".nib.strings"`);
+
+	foreach $file (@searchResult)
+	{
+		$numOfError = 0;
+		
+		$englishFile = $file;
+				
+		$file =~ s/$gNewBasePath//;	# take out the base path
+		$file =~ m/\/(.*)/;			# take out the first /
+		$file = $1;
+
+		AALocUtilities::PrintLog("Checking $file\n");
+		
+		@englishFileResult = `check_strings "$englishFile"`;
+
+		for ($index = 0; $index < @englishFileResult; $index++)
+		{
+			$line = $englishFileResult[$index];
+			
+			# skip full path file name: "xxxx"
+			# skip key contains non ascii character!
+			if ($line =~ /full path file name: "$englishFile"/
+				|| $line =~ /contains non ascii character/)
+			{
+				next;
+			}
+			
+			if ($line !~ /\[Warning\]/
+				|| $line =~ /expending 2 lines/)
+			{
+				if ($numOfError == 0)
+				{
+					# print gLogFile "\<file:$englishFile\>\n";
+					print gLogFile GetFileURL($englishFile) . "\n";
+				}
+				
+				print gLogFile "$line";
+				
+				$numOfError++;
+			}
+		}
+
+		if ($numOfError != 0)
+		{
+			print gLogFile "\n";
+		}
+		
+		$numOfCheckingError += $numOfError;
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckAppleGlotEnvironmentPermissions
+#---------------------------------------------------------------------------------------------
+
+sub CheckAppleGlotEnvironmentPermissions
+{
+	my $numOfError = 0;
+	my $error = "";
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment Permissions\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment Permission Checking Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	$numOfError = 0;
+
+	chomp(@searchResult = `find "$gAGEnvironmentPath" -type d`);
+
+	foreach $file (@searchResult)
+	{
+		$error = `ls -dl "$file"`;
+		
+		if ($error =~ m/dr-xr-xr-x/)
+		{
+			if ($numOfError == 0)
+			{
+				print gLogFile "The following folders have permission problem:\n";
+			}
+			
+			print gLogFile "dr-xr-xr-x  $file\n";
+		
+			$numOfError++;
+		}
+	}
+
+	if ($numOfError != 0)
+	{
+		print gLogFile "\n";
+	}
+
+
+	$error = "";
+	$error = `ls -Rl $gAGEnvironmentPath | grep "\\-r--r--r-"`;
+	
+	if ($error ne "")
+	{
+		print gLogFile "The following files have permission problem:\n";
+		print gLogFile "$error";
+		
+		$numOfError++;
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#-----------------------------------------------------------------------------------------
+#	CheckAppleGlotCrossCheckLog
+#-----------------------------------------------------------------------------------------
+
+sub CheckAppleGlotCrossCheckLog
+{
+	my $numOfError = 0;
+	my @logFileContent;
+	my $line;
+
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Cross Check Log\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	if (!(-e "$gAGCrossCheckLogFile"))
+	{
+		#	AALocUtilities::PrintLog("\nERROR: AppleGlot Cross Check Log doesn't exist.\n");
+		#	return;
+		
+		my $lprojLanguage = GetLocLanguage($gNewLocPath);
+		my $countryCode = $AALocUtilities::kLprojLanguageCode2CountryCode{$lprojLanguage};
+
+		`ag3envcrosscheck $gAGEnvironmentPath $countryCode all > $gAGCrossCheckLogFile`;
+	}
+
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Cross Check Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	open(LOGFILECONTENT, "<$gAGCrossCheckLogFile") or die "Cannot open '$gAGCrossCheckLogFile': $!";
+		@logFileContent = <LOGFILECONTENT>;
+	close(LOGFILECONTENT);
+
+	$numOfError = 0;
+
+	for (my $index = 0; $index < @logFileContent; $index++)
+	{
+		$line = $logFileContent[$index];
+	
+		if ($line =~ m/ERRORS DETECTED/)
+		{
+			print gLogFile "$logFileContent[$index - 1]";
+			print gLogFile "$line";
+			
+			while ($index < @logFileContent)
+			{
+				$index++;
+				$line = $logFileContent[$index];
+				
+				if (($line =~ m/--------------------/) || ($line =~ m/\.\.\.\.\.\.\.\.\.\.\.\./))
+				{
+					last;
+				}
+				else
+				{
+					print gLogFile "$line";
+				}
+			}
+			
+			$numOfError++;
+		}
+		elsif (($line =~ m/OL__NB/) || ($line =~ m/__OBNB/) || ($line =~ m/____NB/))
+		{
+			print gLogFile "$line";
+			
+			$numOfError++;
+		}
+	}
+
+	
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckAppleGlotLogFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckAppleGlotLogFiles
+{
+	my $numOfError = 0;
+	my $numOfLogFileError = 0;
+	my $logFile;
+	my $file;
+	my @logFileContent;
+	my $line;
+	my $directory;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Log files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Log Files Checking Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	opendir(directory, $gNewBasePath);
+    @searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+
+	foreach $file (@searchResult)
+	{
+		AALocUtilities::PrintLog("Checking AppleGlot log file $file\n");
+		
+		$logFile = $gAGEnvironmentLogsPath . "/" . $file;
+
+
+		open(LOGFILECONTENT, "<$logFile") or die "Cannot open '$logFile': $!";
+			@logFileContent = <LOGFILECONTENT>;
+		close(LOGFILECONTENT);
+	
+		$numOfLogFileError = 0;
+	
+		foreach $line(@logFileContent)
+		{
+			if (($line =~ m/ErrK/)
+			    || ($line =~ m/Uncaught exception/)
+			    || ($line =~ m/palette needed/)
+			    || ($line =~ m/nibtool: could not load/)
+			    || ($line =~ m/No Translator found for resource type/))
+			{
+				if ($numOfLogFileError == 0)
+				{
+					print gLogFile "$file have problem\n";
+				}
+			
+				print gLogFile "$line";
+				
+				$numOfLogFileError++;
+			}
+		}
+
+		if ($numOfLogFileError != 0)
+		{
+			print gLogFile "\n";
+		}
+
+		$numOfError = $numOfError + $numOfLogFileError;
+		$gTotalNumOfError = $gTotalNumOfError + $numOfLogFileError;
+	}
+
+		
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckCompliedNib
+#---------------------------------------------------------------------------------------------
+
+sub CheckCompliedNib
+{
+	my $numOfError = 0;
+	my $file;
+	
+	
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking Complied Nib files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# Complied Nib Files Checking Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	
+	chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/English.lproj/*.nib" -or -path "*/en.lproj/*.nib" \\) | grep -v "objects.nib" | grep -v "keyedobjects.nib"  | grep -v "classes.nib"  | grep -v "info.nib"  | grep -v "designable.nib"`);
+	
+	foreach $file (@searchResult)
+	{
+		if ($numOfError == 0)
+		{
+			print gLogFile "The following complied .nib file(s) found:\n";
+		}
+
+		$file =~ s/$gNewBasePath//;	# take out the base path
+		
+		print gLogFile "$file\n";
+		
+		$numOfError++;
+	}
+	
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+	
+	
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	else
+	{
+		print gLogFile "\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#-----------------------------------------------------------------------------------------
+#	CheckSubmissionTarballs
+#-----------------------------------------------------------------------------------------
+
+sub CheckSubmissionTarballs
+{
+	my $numOfError = 0;
+	my $index;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking submission tarballs\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# Submission Tarballs Checking Result (Please ignore the following result for LXRip projects)\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	$numOfError = 0;
+	
+	for ($index = 0; $index < $gNumOfComponents; $index++)
+	{
+		chomp(@submissionTarballResult = `find "$gSubmissionPath" -type f | grep "$gComponentsList[$index]"`);
+		
+		if (@submissionTarballResult == 0)
+		{
+			print gLogFile "Cannot find tarball for $gComponentsList[$index]\n";
+			
+			$numOfError++;
+		}
+	}
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckSearchTermsFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckSearchTermsFiles
+{
+	my $numOfCheckingError = 0;
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment .searchTerms Files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment .searchTerms Files Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/English.lproj/*.searchTerms" \\)`);
+
+	foreach $file (@searchResult)
+	{
+		if ($numOfCheckingError == 0)
+		{
+			print gLogFile "The following .searchTerms file(s) found:\n";
+		}
+
+		$file =~ s/$gNewBasePath//;	# take out the base path
+		print gLogFile "$file\n";
+		
+		$numOfCheckingError++;
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No .searchTerms file Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckPropertiesFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckPropertiesFiles
+{
+	my $numOfCheckingError = 0;
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment .properties Files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment .properties Files Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/*.properties" \\)`);
+
+	foreach $file (@searchResult)
+	{
+		my $propertiesStringFile = $file . ".strings";
+	
+		AALocUtilities::PrintLog("Checking $propertiesStringFile\n");
+
+
+		if (!(-e "$propertiesStringFile"))
+		{
+			if ($numOfCheckingError == 0)
+			{
+				print gLogFile "The following .properties.strings file(s) cannot find:\n";
+			}
+
+			$file =~ s/$gNewBasePath//;	# take out the base path
+			print gLogFile "$file\n";
+			
+			$numOfCheckingError++;
+		}
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckWidgetJSFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckWidgetJSFiles
+{
+	my $numOfCheckingError = 0;
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment .js Files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment .js Files Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	chomp(@searchResult = `find "$gNewBasePath" -type f \\( -path "*/*.js" \\)`);
+
+	foreach $file (@searchResult)
+	{
+		AALocUtilities::PrintLog("Checking $file\n");
+		
+		my $jsStringFile = $file . ".strings";
+	
+		if (!(-e "$jsStringFile"))
+		{
+			if ($numOfCheckingError == 0)
+			{
+				print gLogFile "The following .js.strings file(s) cannot find:\n";
+			}
+
+			$file =~ s/$gNewBasePath//;	# take out the base path
+			print gLogFile "$file\n";
+			
+			$numOfCheckingError++;
+		}
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckHiddenFiles
+#---------------------------------------------------------------------------------------------
+
+sub CheckHiddenFiles
+{
+	my $numOfCheckingError = 0;
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment Hidden Files\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment Hidden Files Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	chomp(@searchResult = `find $gNewBasePath -type f \\( -path "*/\.*" \\) | grep -v ".DS_Store"  | grep -v ".localized"`);
+
+
+	foreach $file (@searchResult)
+	{
+		if ($numOfCheckingError == 0)
+		{
+			print gLogFile "The following Hidden file(s) found:\n";
+		}
+
+		$file =~ s/$gNewBasePath//;	# take out the base path
+		print gLogFile "$file\n";
+		
+		$numOfCheckingError++;
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsInTheArray
+#---------------------------------------------------------------------------------------------
+
+sub IsInTheArray
+{
+	$project = shift;
+	$arrayRef = shift;
+	@Array = @$arrayRef;
+	
+	$there = 0;	
+	
+	foreach my $arrayItem (@Array)
+	{
+		if ($arrayItem eq $project)
+		{
+			$there = 1;
+			last;
+		}
+	}
+	
+	return $there;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckOldLocOldBaseNibFilesFormatDifferent
+#
+#	Check <rdar://problem/5298699> OL and OB nib files format different
+#---------------------------------------------------------------------------------------------
+
+sub CheckOldLocOldBaseNibFilesFormatDifferent
+{
+	my $numOfCheckingError = 0;
+	my $file;
+	
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment _OldLoc and _OldBase nib files format different\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# Checking AppleGlot Environment _OldLoc and _OldBase nib files format different\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+
+	chomp (@temp = `find $gOldBasePath`);
+
+	$i = 0;
+	foreach $file (@temp)
+	{	
+		($oldBasePathFiles[$i] = $file) =~ s/$gOldBasePath//;
+		$oldBasePathFiles[$i] =~ s/\/\w+\.lproj/\/<lang>\.lproj/;
+		$i++;
+	}
+
+
+	chomp (@temp = `find $gOldLocPath`);
+	$i = 0;
+	foreach $file (@temp)
+	{	
+		($oldLocPathFiles[$i] = $file) =~ s/$gOldLocPath//;
+		$oldLocPathFiles[$i] =~ s/\/\w+\.lproj/\/<lang>\.lproj/;
+		$i++;
+	}
+
+
+	foreach $file (@oldLocPathFiles)
+	{
+		if (! IsInTheArray($file, \@oldBasePathFiles) && $file =~ /nib/)
+		{
+			if ($numOfCheckingError == 0)
+			{
+				print gLogFile "The following nib file(s) format in _OldLoc and _OldBase are different:\n";
+			}
+
+			print gLogFile "$file\n";
+			$numOfCheckingError++;
+		}
+	}
+
+		
+	$gTotalNumOfError = $gTotalNumOfError + $numOfCheckingError;
+
+	if ($numOfCheckingError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckLKCX
+#---------------------------------------------------------------------------------------------
+
+sub CheckLKCX
+{
+	# ($locKitName, $others) = reverse(split(/\//, $gLocEnvironmentPath));
+	$locKitName = "";
+	
+	my $language = GetLocLanguage($gNewLocPath);
+	my $numOfError = 0;
+	my $error = "";
+	my $index = 0;
+
+
+	# $gCheckLKCXLogFile = $gLKCXInfoPath . "$locKitName" . "_checkLocKitLog.txt";
+
+	if (-e $gCheckLKCXLogFile)
+	{
+		system "rm '$gCheckLKCXLogFile'";
+	}
+
+	open gLogFile, ">> $gCheckLKCXLogFile" or die "Failed to open $gCheckLKCXLogFile\n";
+
+	print gLogFile "#========================================================================================\n";
+	print gLogFile "# $locKitName Checking Result\n";
+	print gLogFile "# ";
+	print gLogFile `date`;
+	print gLogFile "#========================================================================================\n";
+	print gLogFile "\n";
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Building Components List
+	#-----------------------------------------------------------------------------------------
+
+	my $newBaseFileName;
+	my $directory;
+	my $file;
+	
+	opendir(directory, $gNewBasePath);
+    @searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+
+	foreach $file (@searchResult)
+	{
+		if ($file =~ /_Tier/)
+		{
+			($proj, $newBaseFileName) = reverse(split(/_Tier/, $file));
+		}
+		else
+		{
+			$newBaseFileName = $file;
+		}
+		
+		$gComponentsList[$gNumOfComponents] = $newBaseFileName;
+		$gNumOfComponents++;
+	}
+	
+	opendir(directory, $gNonAGNewBasePath);
+    @searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+
+	foreach $file (@searchResult)
+	{
+		if ($file =~ /_Tier/)
+		{
+			($proj, $newBaseFileName) = reverse(split(/_Tier/, $file));
+		}
+		else
+		{
+			$newBaseFileName = $file;
+		}
+		
+		$gComponentsList[$gNumOfComponents] = $newBaseFileName;
+		$gNumOfComponents++;
+	}
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Check Components .plist
+	#-----------------------------------------------------------------------------------------
+
+	# CheckComponentsPlist();
+	# GenerateComponentsPlistReport();
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot Environment
+	#-----------------------------------------------------------------------------------------
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Checking AppleGlot Environment\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+	print gLogFile "# AppleGlot Environment Checking Result\n";
+	print gLogFile "#----------------------------------------------------------------------------------------\n";
+
+	$numOfError = 0;
+	
+	if ($language eq "")
+	{
+		print gLogFile "Cannot find .lproj in _NewLoc\n";
+		
+		$numOfError++;
+	}
+	#	elsif ($language eq "pt_PT")
+	#	{
+	#	print gLogFile "Incorrect .lproj (pt_PT) in _NewLoc for BR\n";
+	#	$numOfError++;
+	#	}
+
+	
+	$numOfError += CheckAppleGlotEmptyFolder($gNewBasePath);
+	$numOfError += CheckAppleGlotEmptyFolder($gOldBasePath);
+	$numOfError += CheckAppleGlotEmptyFolder($gOldLocPath);
+
+
+	$gTotalNumOfError = $gTotalNumOfError + $numOfError;
+
+	if ($numOfError == 0)
+	{
+		print gLogFile "No Problem Found\n";
+	}
+	
+	print gLogFile "\n\n";
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot Environment Permissions
+	#-----------------------------------------------------------------------------------------
+
+	#	CheckAppleGlotEnvironmentPermissions();
+
+	
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot Cross Check Log
+	#-----------------------------------------------------------------------------------------
+
+	CheckAppleGlotCrossCheckLog();
+
+	
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot .Strings Files
+	#-----------------------------------------------------------------------------------------
+
+	CheckAppleGlotStringsFiles();
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot Log files
+	#-----------------------------------------------------------------------------------------
+
+	CheckAppleGlotLogFiles();
+	
+	
+	#-----------------------------------------------------------------------------------------
+	#	Check Complied Nib files
+	#-----------------------------------------------------------------------------------------
+	
+	CheckCompliedNib();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check Submission Tarballs
+	#-----------------------------------------------------------------------------------------
+
+	# CheckSubmissionTarballs();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot .searchTerms Files
+	#-----------------------------------------------------------------------------------------
+
+	CheckSearchTermsFiles();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot .properties Files
+	#-----------------------------------------------------------------------------------------
+
+	CheckPropertiesFiles();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check AppleGlot .js Files
+	#-----------------------------------------------------------------------------------------
+
+	CheckWidgetJSFiles();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check Hidden Files
+	#-----------------------------------------------------------------------------------------
+
+	CheckHiddenFiles();
+	
+
+	#-----------------------------------------------------------------------------------------
+	#	Check OL and OB nib files format different
+	#-----------------------------------------------------------------------------------------
+
+	CheckOldLocOldBaseNibFilesFormatDifferent();
+
+
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+
+	print gLogFile "#========================================================================================\n";
+	print gLogFile "#                                E N D    O F    R E P O R T                             \n";
+	print gLogFile "#========================================================================================\n";
+
+	close gLogFile;
+
+
+	if ($gTotalNumOfError != 0)
+	{
+		AALocUtilities::PrintLog("\n\nErrors found. Please check the log file $gCheckLKCXLogFile\n\n\n");
+		
+		`open -a "AD Viewer" "$gCheckLKCXLogFile"`;
+	}
+	else
+	{
+		AALocUtilities::PrintLog("\n\nNo problem found\n\n\n");
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AACheckLKCX [Version $version]\n";
+	print "\nUsage: AACheckLKCX <LKCX Environment>\n\n";
+	print "  -help or -h           Display this help.\n";
+	# print "  -checkComponentPlist  check components.plist (default don't check)\n";
+	print "  -checkAllLanguages    check all languages' issues in components.plist\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

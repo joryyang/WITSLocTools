@@ -1,0 +1,258 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AACleanupTier3NewLoc
+##        Author:	Stanley Au-Yeung
+##          Date:	Tuesday, October 27, 2009
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	10/27/09	12:00	SA		Original version
+##
+##*****************************************************************************
+
+BEGIN
+{
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+};
+
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Compare;
+use File::Basename;
+
+use Foundation;
+use Evolution;
+
+use AALocEnvUtilities;
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+($gScriptName = $0) =~ s|(.+)/([^/]+)$|$2|;
+my $gScriptFullPath = $0;
+my $gScriptPath = dirname($gScriptFullPath) . "/";
+my $gWidgetJSToolPath = $gScriptPath . "projSpecific/Widget_jstool";
+my $gJavaPropertiesToolPath = $gScriptPath . "projSpecific/JAVA_propertiestool";
+
+
+# set version string
+$version = "1.0";
+
+$gDebug = 0;
+$gInPath = "";
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&UsageLine();
+	exit (2);
+}
+
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-getVersion")
+	{
+		print $version;
+		exit (2);
+	}
+
+	if ($item eq "-debug")
+	{
+		$gDebug = 1;
+	}
+	
+	
+	$gInPath = $item;
+	$gInPath =~ s|/?$|/|;	# has to end with one slash
+}
+
+
+if (-d $gInPath)
+{
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+	
+	PrintLog("\n");
+	PrintLog("#========================================================================================\n");
+	PrintLog("# Run Post-Process for Widget .js files\n");
+	PrintLog("#========================================================================================\n");
+	
+	system "$gWidgetJSToolPath -sd '$gInPath'";
+	
+	
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+	
+	PrintLog("\n");
+	PrintLog("#========================================================================================\n");
+	PrintLog("# Run Post-Process for Jave .properties files\n");
+	PrintLog("#========================================================================================\n");
+	
+	system "$gJavaPropertiesToolPath -sd '$gInPath'";
+	
+	
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+	
+	PrintLog("\n");
+	PrintLog("#========================================================================================\n");
+	PrintLog("# Remove Extras files\n");
+	PrintLog("#========================================================================================\n");
+	
+	system "removeExtras --remove files --remove metadata '$gInPath'";
+	
+	
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+	
+	PrintLog("\n");
+	PrintLog("#========================================================================================\n");
+	PrintLog("# Remove locversion.plist\n");
+	PrintLog("#========================================================================================\n");
+	
+	chomp(@searchResult = `find "$gInPath" -type f | grep "locversion.plist"`);
+	
+	foreach $file (@searchResult)
+	{
+		PrintLog("Removing $file\n");
+		
+		`rm -d -r "$file"`;
+	}
+}
+else
+{
+	print "ERROR: specified path '$gInPath' doesn't exist.\n";
+	exit(1);
+}
+
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#	Function Definitions
+#=============================================================================================
+
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+sub PrintLog
+{
+	my ($inMessage) = @_;
+	
+	print STDERR "$inMessage";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	UsageLine
+#---------------------------------------------------------------------------------------------
+
+sub UsageLine
+{
+	print "Usage: AACleanupTier3NewLoc <Loc Environment>\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AACleanupTier3NewLoc [Version $version]\n";
+	&UsageLine();
+	print "This command allows to:\n";
+	print "\n";
+	print "  -help or -h   Display this help.\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

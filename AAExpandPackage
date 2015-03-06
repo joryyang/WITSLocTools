@@ -1,0 +1,259 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAExpandPackage
+##        Author:	Stanley Au-Yeung
+##          Date:	Sunday, October 18, 2009
+##
+##   Description:	What it does...
+##
+##                       Copyright Apple Computer Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	10/18/09	12:00	SA		Original version
+##
+##*****************************************************************************
+
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Basename;
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+# set version string
+$version = "1.0";
+
+#---------------------------------------------------------------------------------------------
+#
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&UsageLine();
+	exit (2);
+}
+
+if (@ARGV > 2)
+{
+	print "\n### ERROR: Found too many parameters.\n";
+	&UsageLine();
+	exit (2);
+}
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+
+	$tarItem = $item;
+}
+
+if (-d $tarItem)
+{
+	ExpandPackageFolder($tarItem);
+}
+elsif (-e $tarItem)
+{
+	ExpandPackage($tarItem);
+}
+else
+{
+	print "ERROR: specified path '$tarFolder' doesn't exist.\n";
+	exit(1);
+}
+
+exit(0);
+
+
+
+
+#---------------------------------------------------------------------------------------------
+#	ExpandPackage
+#---------------------------------------------------------------------------------------------
+
+sub ExpandPackage
+{
+	my($inTarPath) = @_;
+
+	#-----------------------------------------------------------------------------------------
+	#	Check input path
+	#-----------------------------------------------------------------------------------------
+
+	if (!(-e "$inTarPath"))
+	{
+		print STDERR "\n### ERROR: The specified file $inTarPath doesn't exist.\n";
+		
+		return;
+	}
+	else
+	{
+		if (!($inTarPath =~ /\.tgz$/i) && !($inTarPath =~ /\.tar$/i))
+		{
+			print STDERR "\n### ERROR: The $inTarPath filetype is incorrect. The filetype should be tgz or tar.\n";
+			
+			return;
+		}
+	}
+
+
+	#-----------------------------------------------------------------------------------------
+	#
+	#-----------------------------------------------------------------------------------------
+
+	print "Expanding $inTarPath\n";
+		
+
+	my $directoryPath = dirname($inTarPath);
+	my $tarName = basename($inTarPath);
+
+	$tarName =~ /\d\_(\w*)\_\d/;
+	my $lang = $1;
+
+	$tarName =~ /.*$lang/;
+
+	$compName = $&;
+
+	my $BR_Folder = $directoryPath . "\/" . "BR_" . $compName;
+	my $BO_Folder = $directoryPath . "\/" . "BO_" . $compName;
+	my $glossaryFolder = $directoryPath."\/"."BO_".$compName."\/Glossaries";
+	my $tarPath = $BR_Folder."\/".$compName."\.tar";
+
+	
+	if ($inTarPath =~ /\.tgz$/i)
+	{
+		`gnutar xzf "$inTarPath" -C "$directoryPath"`;
+		`gnutar xf "$tarPath" -C "$BR_Folder"`;
+	}
+	elsif ($inTarPath =~ /\.tar$/i)
+	{
+		`gnutar xf "$inTarPath" -C "$directoryPath"`;
+		`gnutar xf "$tarPath" -C "$BR_Folder"`;
+	}
+	
+
+	`rm "$tarPath"`;
+	`rm -R "$BO_Folder"`;
+	
+
+	my $componentFolderPath;
+
+	$compName =~ m/(.*?)_(.*)/;
+	$componentName = $1;
+
+
+
+	if (-e $inTarPath)
+	{
+		`rm -d -r "$inTarPath"`;
+	}
+
+	if (-d $BR_Folder)
+	{
+		`rm -R "$BR_Folder"`;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	ExpandPackageFolder
+#---------------------------------------------------------------------------------------------
+
+sub ExpandPackageFolder
+{
+	my($inFolderPath) = @_;
+
+	#-----------------------------------------------------------------------------------------
+	#	Check input path
+	#-----------------------------------------------------------------------------------------
+
+	if (!(-d "$inFolderPath"))
+	{
+		PrintLog("\n### ERROR: The specified path $inFolderPath doesn't exist.\n");
+		return;
+	}
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Expand .tgz in folder
+	#-----------------------------------------------------------------------------------------
+
+	# chomp(@searchResult = `find "$inFolderPath" -type f | grep "tgz"`);
+	chomp(@searchResult = `find "$inFolderPath" -type f | grep -v ".DS_Store"`);
+
+	foreach $file (@searchResult)
+	{
+		ExpandPackage($file);
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	UsageLine
+#---------------------------------------------------------------------------------------------
+
+sub UsageLine
+{
+	print "\nUsage: AAExpandPackage <package or packages folder>\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AAExpandPackage [Version $version]\n";
+	&UsageLine();
+	print "  -help or -h   Display this help.\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

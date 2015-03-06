@@ -1,0 +1,188 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAExtractAttributedStrings
+##        Author:	Stanley Au-Yeung
+##          Date:	Saturday, August 4, 2007.
+##
+##   Description:	What it does...
+##
+##                       Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	08/04/07	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use Getopt::Long;
+use Error qw(:try);
+use File::Basename;
+use File::Find;
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+$version = "1.0.0";
+
+my ($gAppleGlotEnvFullPath, $h, $v, $getVersion);
+
+&usage()
+    unless @ARGV and GetOptions(
+    'glot=s'                   => \$gAppleGlotEnvFullPath,
+    'h'                        => \$h,
+    'v'                        => \$v,
+    'getVersion'               => \$getVersion,
+    );
+
+
+if ($h)
+{
+	&usage();
+}
+
+
+if ($v)
+{
+	print "Version $version\n";
+}
+
+
+if ($getVersion)
+{
+	print "$version";
+}
+
+if ($gAppleGlotEnvFullPath ne "")
+{
+	$gAppleGlotEnvFullPath =~ s|/?$|/|;	# has to end with one slash
+}
+
+
+#---------------------------------------------------------------------------------------------
+#  Main
+#---------------------------------------------------------------------------------------------
+
+if ((-d $gAppleGlotEnvFullPath))
+{
+	my $appleGlotEnvName = GetDirectoryBaseName($gAppleGlotEnvFullPath);
+	my $appleGlotEnvNewBasePath = $gAppleGlotEnvFullPath . "_NewBase/";
+	my $appleGlotEnvNewLocPath = $gAppleGlotEnvFullPath . "_NewLoc/";
+	my $language = GetLprojLanguage($appleGlotEnvNewLocPath);
+	my $problemNibsTxtReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName. "_ProblemNibs.txt";
+	my $problemNibsHtmlReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName . "_ProblemNibs.html";
+	my $problemNibsReport = $gAppleGlotEnvFullPath . "_Logs/" . $appleGlotEnvName . "_ProblemNibs.rpt";
+
+
+
+
+pcx /Users/kenji/Desktop/Done/Env/_NewBase /Users/kenji/Desktop/Done/Env/_NewBase -i -ski -skt -skr -sks -sktiff -objinfo -maxnibtool 4 -cacheDir2 ~/Library/Caches/nibs -inclnibattr 'm/^(attributedTitle.string|string)$/;' -ib_plugin '/Developer/Plugins/DiscRecordingPlugin.ibplugin' | perl -ne 'if (m|:nib:obj:(-?\d+)-(\w+)-(.+)-//->(.+)<-//:] (.*)|) {$o=$1;$c=$2;$np=$4;$s=$5;  if (($c=~m/^(NSTextView|NSMenuItem)$/) && ($s=~m/\S/s)) {print $np, "\t", $c, "\t", $o, "\t", $s, "\t", "\n";}; };' 
+
+
+Please change red section accordingly.
+Source and target directories are _NewBase in the Kit.
+You may have to specify -ib_plugin depending on the components in the kit.
+You can specify multiple -ib-plugin parameters if necessary.
+E.g., -ib-plugin /path_to_ibplugin1 -ib-plugin /path_to_ibplugin2
+
+
+}
+else
+{
+
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetDirectoryBaseName
+#---------------------------------------------------------------------------------------------
+
+sub GetDirectoryBaseName
+{
+	my ($inDirectoryPath) = @_;
+
+	$inDirectoryPath =~ s|/$||;		# remove trailing slash
+
+	return basename($inDirectoryPath);
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	GetLprojLanguage
+#---------------------------------------------------------------------------------------------
+
+%gFindLanguageResult = ();
+
+sub SetLocLproj
+{
+	if (m/(.+).lproj$/ && ($1 ne "English") && ($1 ne "en"))
+	{
+		#--Debug----------------------------------------------------------------------------------
+		print STDERR "[Debug:SetLocLproj] Language: \"$1\"\n" if ($gDebug);
+		#-----------------------------------------------------------------------------------------
+
+		$gFindLanguageResult{$1}++;
+	}
+}
+
+sub GetLprojLanguage
+{
+	my($inPath) = @_;
+	my %lprojs = ();
+	
+	%gFindLanguageResult = ();
+	find \&SetLocLproj, $inPath;
+
+	unless (scalar %gFindLanguageResult)
+	{
+		printf STDERR "\n### WARNING: No localized .lproj in $inPath.\n";
+		# exit 1;
+	}
+
+	my @tmp = sort {$gFindLanguageResult{$a} <=> $gFindLanguageResult{$b}} keys %gFindLanguageResult;
+
+	#--Debug----------------------------------------------------------------------------------
+	print STDERR "[Debug:GetLprojLanguage] Language: \"$tmp[$#array]\"\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+
+	return $tmp[$#array];
+}
+
+
+
+
+#---------------------------------------------------------------------------------------------
+#	usage
+#---------------------------------------------------------------------------------------------
+
+sub usage
+{
+    print "AACheckProblemNibs [Version $version] - Check problem .nib files.\n\n";
+    print "  -glot	            - AppleGlot Env Path\n";
+    print "  -h           		- Show this help\n";
+    exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

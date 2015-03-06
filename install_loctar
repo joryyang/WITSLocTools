@@ -1,0 +1,250 @@
+#!/usr/bin/perl
+# =============================================================================
+#
+#  File:    install_loctar
+#
+#  Contains:    This script allow to install localization files in the tar
+#               files to be submitted to an actual system.
+#
+#  Version:	1.3.4
+#
+#  Copyright:   (c) 2000 - 2005 by Apple Computer, Inc., all rights reserved.
+#
+#  Contact:     kinbara1@apple.com, hide@apple.com
+#
+#  Writers:
+#   (M.K) Mic Kimbara
+#   (H.T) Hide Tanaka
+#
+#  Change History (most recent first):
+#
+#  <10>  04/04/05 H.T Fixed 4073530. Added code to check for the presence of destination volume name.
+#   <9>  02/09/05 H.T Fixed a bug of separation of user and group with a period.
+#   <8>  03/24/03 M.K 3124500.
+#   <7>  03/19/02 M.K Support -h option.
+#   <6>  03/19/02 M.K Add -target option.
+#   <5>  01/30/02 M.K .tgz file support.
+#   <4>  10/07/01 M.K .taz file support.
+#   <3>  10/06/01 M.K Fixed a bug on multiple tar file handling.
+#   <2>  10/05/01 M.K Fixed a bug for calling FixupResource command.
+#   <1>  10/06/01 M.K Original Release.
+#
+# =============================================================================
+use File::Find;
+use File::Path;
+
+($Prog_Name = $0) =~ s|(.+)/([^/]+)$|$2|;
+$Prog_Vers = "1.3.4";
+
+
+$usageLine_str = 
+"\n[Version $Prog_Vers] - Standalone tool\nUsage: $Prog_Name [-clean] [-volume \"<name>\"] <tarfile>... [-help]\n\n";
+
+$usage_str = $usageLine_str . 
+"  -clean               Will remove {lang}.lproj to be installed first
+  -volume \"<name>\"    a volume name to be installed
+
+EXAMPLES:
+$Prog_Name *.tgz
+$Prog_Name -clean *.tgz
+$Prog_Name -volume \"Mac OS X\" *.tgz
+
+NOTES:
+This tool needs to be run as root.
+The volume name must be the one of the names listed in /Volumes/.\n\n";
+
+$volumeName = undef;
+$cleanInstallMode = undef;
+
+# -----------------------------------------------------------------------------
+#  Parse the parameters
+# -----------------------------------------------------------------------------
+while ( $arg = shift( @ARGV ) )
+{
+	if ($arg =~ /^-Debug/i) {
+		$DEBUG = $arg;
+	}
+	elsif ($arg =~ /^-h/i) {
+		print $usage_str;
+		exit( 2 );
+	}
+	elsif ($arg =~ /^-cle/i) {
+		$cleanInstallMode = $arg;
+	}
+	elsif ($arg =~ /^-vol/i) {
+		$volumeName = shift(@ARGV);
+	}
+	elsif ($arg =~ /^-/) {
+		print "\n### ERROR: Unknown parameter \'$arg\'.\n";
+		print $usageLine_str;
+		exit( 2 );
+	}
+	else {
+		#	if (!-e $arg) {
+		#		print "\n### ERROR: No such tar file: $arg\n";
+		#		print $usageLine_str;
+		#		exit (2);
+		#	} 
+		push( @tars , $arg );
+	}
+}
+
+if ( !@tars ) {
+	print "\n### ERROR: No tarfiles are specified.\n";
+        print $usageLine_str;
+        exit( 2 );
+}
+
+# -----------------------------------------------------------------------------
+#  Check an user to be done
+# -----------------------------------------------------------------------------
+# SA	if ($>) {
+# SA		print "\n### ERROR - Need to run as root, or use sudo command.\n\n";
+# SA		exit (2);
+# SA	}
+
+# -----------------------------------------------------------------------------
+#  Check for the presence of the destination if -volume is specified.
+# ----------------------------------------------------------------------------
+if ($volumeName) {
+	my $destination_check = 0;
+	my $dir_to_process = '/Volumes';
+	$volumeName =~ s|/$||;
+	
+	opendir DH, $dir_to_process or die "Cannot open $dir_to_process: $!";
+	foreach $name (readdir DH) {
+		if ($volumeName eq $name) { $destination_check = 1; }
+	}
+	closedir DH;
+	unless ($destination_check) {
+		print "\n### ERROR - Destination volume name '$volumeName' doesn't exist in /Volumes/.\n\n";
+		exit (2);
+	}
+}
+
+# -----------------------------------------------------------------------------
+#  Do for all tar files
+# -----------------------------------------------------------------------------
+foreach $tar ( @tars ) {
+
+	print "### INFO - Installing localization files from: $tar\n";
+	
+	# -----------------------------------------------------------------------------
+	#  Check the tar file name convention
+	# -----------------------------------------------------------------------------
+	# if ($tar !~ /([^\/]+_[^_]+\.\d[A-Z]\d*\.\d+_[A-Z]+)_\d+\.(tar|taz|tgz)/) {
+	if ($tar !~ /([^\/]+_[^_]+\.\d+[a-zA-Z]\d*[a-zA-Z]*\.\d+_[A-Z]+)_[\d\.]+\.(tar|taz|tgz)/) {
+		print "### ERROR - Illegal file name. \n\n";
+		next;
+	}
+	$baseName = $1;
+	$tarFormat = $2;
+
+	# -----------------------------------------------------------------------------
+	#  Create a tmp directory
+	# -----------------------------------------------------------------------------
+	$randNum = int ((rand 1 + 0.0000001) * 1000000);
+	while (-d "/tmp/$randNum") { 
+		$randNum = int ((rand 1 + 0.0000001) * 1000000);
+	}       
+	$tmpDir = "/tmp/$randNum";
+	$tmpRootDir = "/tmp/$randNum/Root";
+	mkdir( $tmpDir );
+	mkdir( $tmpRootDir );
+
+	# -----------------------------------------------------------------------------
+	#  Extraction for the tar file
+	# -----------------------------------------------------------------------------
+	if ($tarFormat =~ /tar/) {
+		system( "gnutar xf  \'$tar\' -C $tmpDir" );
+	} else {
+		system( "gnutar xzf \'$tar\' -C $tmpDir" );
+	}
+
+	$brDir = "BR_" . $baseName;
+	print "=== CHECKING...\n\t<$tmpDir/$brDir>\n\t<$tmpDir/$brDir/$baseName\.tar>\n" if ($DEBUG);
+	if (-d "$tmpDir/$brDir") {
+		if (-e "$tmpDir/$brDir/$baseName\.tar") {
+			system( "gnutar xf $tmpDir/$brDir/$baseName.tar -C $tmpRootDir" );
+# 			system( "chown -R root.wheel $tmpRootDir" ); # Separation of user and group with a period is depricated.
+			system( "sudo chown -R root:wheel $tmpRootDir" );
+		}
+		else {
+			print "### ERROR - Not available an expected file \'$brDir/$baseName.tar\'.\n\n";
+		}
+	}
+	else {
+		print "### ERROR - Not available an expected directory \'$brDir\'.\n\n";
+	}
+
+	# -----------------------------------------------------------------------------
+	#  Remove exist lproj directory in the system to replace completely
+	# -----------------------------------------------------------------------------
+	@lprojs = ();
+	find sub { push(@lprojs, $File::Find::name) if ($File::Find::name =~ /\.lproj$/) }, $tmpRootDir;
+	foreach $dir ( @lprojs ) {
+		$dir =~ s/^$tmpRootDir//;
+		# *** if -volume is specified, add /Volumes/$volumeName. ***
+		if ($volumeName) {
+			$dir = "/Volumes/$volumeName".$dir;
+		}
+		next if (!$cleanInstallMode);
+
+		print " > Delete > $dir\n" if ($DEBUG);
+		File::Path::rmtree( $dir, 0, 0);
+	}	
+	
+	# -----------------------------------------------------------------------------
+	#  Set permission to localization files /  Remove garbage file
+	# -----------------------------------------------------------------------------
+	
+	# This tool doesn't do this because files in the tar file should have correct permission
+	# and no garbage files already, otherwise it should a localization submission bug.
+	
+	# -----------------------------------------------------------------------------
+	#  Fix up all rsrc files
+	# -----------------------------------------------------------------------------
+	# Do not Fixup here, will do after installing...
+	# $command = "/System/Library/CoreServices/FixupResourceForks $tmpRootDir";
+	# print "CMD = $command\n" if ($DEBUG);
+	# system( $command );
+
+	# -----------------------------------------------------------------------------
+	#  Install localization files to the system 
+	# -----------------------------------------------------------------------------
+	if ($volumeName) {
+		$command = "sudo ditto $tmpRootDir\/ \'\/Volumes\/$volumeName\/\'";
+		# $command = "ditto -rsrcFork $tmpRootDir\/ \'\/Volumes\/$volumeName\/\'";
+	}
+	else
+	{
+		$command = "sudo ditto $tmpRootDir\/ \/";
+		# $command = "ditto -rsrcFork $tmpRootDir\/ \/";
+	}
+	print "CMD = $command\n" if ($DEBUG);
+	system( $command );
+
+	# -----------------------------------------------------------------------------
+	#  Fix up ._ resource files
+	# -----------------------------------------------------------------------------
+	foreach $dir ( @lprojs ) {
+		$dir =~ s/^$tmpRootDir//;
+		# **** If  -volume is specified, add /Volumes/$volumeName. ****
+		if ($volumeName) {
+			$dir = "/Volumes/$volumeName".$dir;
+		}
+		print " > Fixup Rsrc > $dir\n" if ($DEBUG);
+		$command = "/System/Library/CoreServices/FixupResourceForks \'$dir\'";
+		print "CMD = $command\n" if ($DEBUG);
+		system( $command );
+	}	
+	
+	# -----------------------------------------------------------------------------
+	#  Remove the tmp directory
+	# -----------------------------------------------------------------------------
+	$command = "rm -rf $tmpDir";
+	print "CMD = $command\n" if ($DEBUG);
+	system( $command ) if (!$DEBUG);
+}
+
+print "### Done.\n";

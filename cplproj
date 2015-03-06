@@ -1,0 +1,356 @@
+#! /usr/bin/perl 
+# =============================================================================
+#  File:       	cplproj 
+#
+#  Summary:     copy localization folders from GlotEnv to local host
+#
+#  Version:	V1.2
+#
+#  Copyright:	(c) 2001-2002 by Apple Computer, Inc., all rights reserved.
+#
+#  Contact:     timtan@apple.com
+#
+#  Change History (most recent first):
+#       <4>    07/12/06 v1.3   Hafid Arras  "-skipcheck" option replaced (ON by default since detiering) by -runcheck (to allow user to perform check if needed on old style kits)
+#       <3>    05/04/04 v1.2   Tim Tan      add "-skipcheck" option
+#       <2>    10/02/02 v1.1   Tim Tan      add "-h" option for usage help
+#       <1>    06/03/02 v1.0   Tim Tan      init version
+# =============================================================================
+use strict;
+
+################################################################################
+###  main fucntion 
+################################################################################
+my $gDisplayUsageDetail = 0;
+if ($#ARGV == 0) {
+    if ($ARGV[0] eq "-h" || $ARGV[0] eq "-help") {
+	$gDisplayUsageDetail = 1;
+	usage();
+	exit 1;
+    }
+}
+if ($#ARGV < 0) {
+    usage();
+    exit 1;
+}
+
+my ($gLang, $gDir, $gProj, $dumb, $dumb, $dumb, @unknown) = GetArgs2("-lang", "-dir", "-proj", "-restore", "-backup", "-runcheck");
+my $gBackup = IsOptDefined("-backup");
+my $gRestore = IsOptDefined("-restore");
+my $gDebug = IsOptDefined("-debug");
+my $gRunCheck = IsOptDefined("-runcheck");
+my $hasLangOption = IsOptDefined("-lang");
+my $hasDirOption = IsOptDefined("-dir");
+my $hasProjOption = IsOptDefined("-proj");
+my $EXT = "backup";
+my @gCpDirs = ();
+
+my $the_dir;
+my $src;
+my $des;
+
+if ($gLang eq "") {
+    print "Wrong: language not specified\n";
+    usage();
+    exit 1;
+} elsif ($gDir eq "") {
+    print "Wrong: directory not specified\n";
+    usage();
+    exit 1;
+}
+
+if ($#unknown >= 0) {
+    print "unknow option:  ";
+    for (my $i=0; $i<=$#unknown; $i++) {
+	print "$unknown[$i] ";
+    }
+    print "\n";
+    usage();
+    exit 1;
+}
+
+# check usage
+if ($gBackup && $gRestore) {
+    print "Wrong usage, specified both \"-restore\" and \"-backup\" options!\n";
+    usage();
+    exit 1;
+}
+if (! $hasDirOption) {
+    print "Wrong usage: no \"-dir\"!\n";
+    usage();
+    exit 1;
+}
+if (! $hasLangOption) {
+    print "Wrong usage: no \"-lang\"!\n";
+    usage();
+    exit 1;
+}
+
+
+# trim tailing slash
+$gDir =~ s/\/$//g;
+
+# search dir, result saved to @gCpDirs
+find_dir($gDir, $gProj, $hasProjOption, $gLang, $gRestore);
+
+# check _Tier._proj keyword
+if ($gRunCheck) {
+    print "\nchecking whether .lproj dirs under _TierX_proj dir ...\n";
+    foreach (@gCpDirs) {
+	if (! /_Tier._proj\//) {
+	    print "Error: found following lproj does not meet requirement:\n";
+	    print "\t$_\n";
+	    print "Make sure you are running this check on a Tiered Project.\n\n";
+	    exit;
+	}
+    }
+    print "checking done.\n\n";
+}
+
+for (my $i=0; $i<=$#gCpDirs; $i++) {
+    $the_dir = $gCpDirs[$i];
+    chomp($the_dir); 
+
+    $src = $the_dir;
+    $des = $src;
+    if ($gRestore) {
+	# restore mode
+	$des =~ s/\.$EXT$//g;
+    } else {
+	$des =~ s/^$gDir//g;
+
+	if (! $gRunCheck) {
+	    # note: always jump one level down
+	    $des =~ s/(\/)(.*?)(\/.*\/)/$3/;
+	} else {
+	    # as per request 3623406, filter out any path till (and include) _TierX_proj/
+	    $des =~ s/(.*\/)([^\/].*?_Tier._proj)(\/.*)/$3/;
+	}
+
+	if ($gBackup) {
+	    # backup before copy files
+	    print "ditto '$des' '$des.$EXT'\n";
+	    `sudo ditto '$des' '$des.$EXT'`;
+	}
+    }
+
+    print "ditto '$src' '$des'\n";
+    `sudo ditto '$src' '$des'`;
+}
+
+exit 0;
+
+################################################################################
+###  sub fucntions
+################################################################################
+sub usage {
+    if ($gDisplayUsageDetail) {
+	print "NAME\n";
+	print "\tcplproj\n";
+	print "\n";
+	print "SYNOPSIS\n";
+	print "\tcplproj -lang <language> -dir <dir_path>  [-proj <proj_name>] [-runcheck] [-backup | -restore]\n";
+	print "\n";
+	print "DESCRIPTION\n";
+	print "\tThis tools is useful for copy working <lang>.lproj folers to Application\n";
+	print "\tresource folder or to file system on local host. \n";
+	print "\n";
+	print "\tIt also can be used to reverse the newly copied folder by \"-restore\"\n";
+	print "\toption.\n";
+	print "\n";
+	print "\tThe options are as follows:\n";
+	print "\n";
+	print "\t\t-lang      : specify the language\n";
+	print "\t\t-dir       : specify the folder path\n";
+	print "\t\t-proj      : specify project name\n";
+	print "\t\t-runcheck  : whether user need to check _TierX_proj path \n";
+	print "\t\t-backup    : whether user need to bakcup before copy\n";
+	print "\t\t-restore   : whether user need to restore the previous copied \n";
+	print "\t\t             <lang>.lproj folders\n";
+	print "\n";
+	print "HISTORY:\n";
+	print "\tVersion 1.3\n";
+    } else {
+	print "Usage:  cplproj -lang <language> -dir <dir_path>  [-proj <proj_name>] [-runcheck] [-backup | -restore]\n";
+    }
+} # end of usage()
+
+
+sub find_dir {
+    # Global var:  Out: @gCpDirs
+    my ($dir, $proj, $proj_opt, $lang, $restore_mode) = @_;
+    my $dir_ext;
+    my $findname;
+    my $command;
+    my $org_lang;
+
+    $org_lang = $lang;
+    $lang =~ s/\.lproj//g;
+
+    my %tier1_name = ("Dutch" => 1, "nl" => 1,
+		   "English" => 1, "en" => 1,
+		   "French" => 1, "fr" => 1,
+		   "German" => 1, "de" => 1,
+		   "Italian" => 1, "it" => 1,
+		   "Japanese" => 1, "ja" => 1,
+		   "Spanish" => 1, "es" => 1
+		   );
+    my %tier2_name = ("da" => 1,
+		   "fi" => 1,
+		   "ko" => 1,
+		   "no" => 1,
+		   "pt" => 1,
+		   "sv" => 1,
+		   "zh_CN" => 1,
+		   "cs" => 1,
+		   "hu" => 1,
+		   "ar" => 1,
+		   "tr" => 1,
+		   "ro" => 1,
+		   "hr" => 1,
+		   "Greek" => 1,
+		   "he" => 1,
+		   "uk" => 1,
+		   "sk" => 1,
+		   "zh_TW" => 1
+		   );
+    
+    my %other_names = ("Dutch" => "nl",
+		    "nl" => "Dutch",
+
+		    "English" => "en",
+		    "en" => "English",
+
+		    "French" => "fr",
+		    "fr" => "French",
+
+		    "German" => "de",
+		    "de" => "German",
+
+		    "Italian" => "it",
+		    "it" => "Italian",
+
+		    "Japanese" => "ja",
+		    "ja" => "Japanese",
+
+		    "Spanish" => "es",
+		    "es" => "Spanish"
+		    );
+
+    if ($restore_mode) {
+	$dir_ext = "lproj.$EXT";
+    } else {
+	# for either backup, or no backup
+	$dir_ext = "lproj";
+    }
+
+    if ($tier1_name{$lang}) {
+	$findname = "\\( -name \"$lang.$dir_ext\" -or -name \"" . $other_names{$lang} . ".$dir_ext\" \\)";
+    } elsif ($tier2_name{$lang}) {
+	$findname = "\\( -name $lang.$dir_ext \\)";
+    } else {
+	print "unknow lproj: $org_lang\n";
+	exit 2;
+    }
+
+    if ($proj_opt && (!$restore_mode)) {
+	$command = "find '$dir/$proj' $findname -type d";
+    } else {
+	$command = "find '$dir' $findname -type d";
+    }
+    #print "command: $command\n";
+    @gCpDirs = `$command`;
+} # end of find_dir
+
+
+sub IsOptDefined {
+    my($opt) = $_[0];
+    my($ret, $item);
+
+    $ret = 0;
+    foreach $item(@main::ARGV) {
+	if ($opt eq $item) {
+	    $ret = 1;
+	    last;
+	}
+    }
+
+    $ret;
+} # end of IsOptDefined()
+
+
+sub GetArgs2 {
+	my(@items) = @_;
+	my(@rets, %temp, $arg);
+	my($first, $value);
+	my(@main_argv) = @main::ARGV;
+
+	foreach my $item (@items) {
+		$temp{$item} = '';
+		push(@rets, '');
+	}
+	
+	# skip till the first option flag
+	while ($arg = shift(@main_argv)) {
+	    if ($arg =~ /^-/) { # yes, found the first flag
+		# break out
+		last;
+	    }
+	}
+MLOOP:	while ($arg) {
+		# A secret feature!
+		if ($arg eq '-Debug') {
+			$main::Debug = 1;
+			next;
+		}
+
+		if (defined($temp{$arg})) {
+			# need to modify the logic here!
+			# $temp{$arg} = shift(@main_argv);
+			$first = shift(@main_argv);
+			if (! $first) {
+			    # the end, break out
+			    last;
+			}
+			if ($first =~ /^-/) {
+			    # it's a flag, not value!
+			    # continue main loop
+			    $arg = $first;
+			    next;
+			} else {
+			    # put the value to hashtable
+			    # $temp{$arg} = $first;
+			    ## how about mutiple values?
+			    ## join them together in a string!
+			    # run a loop to check out all values
+			    while ($value = shift(@main_argv)) {
+				if ($value =~ /^-/) {
+				    # it's a flag, not value!
+				    # continue main loop
+				    $temp{$arg} = $first; # save value
+				    $arg = $value;
+				    next MLOOP;
+				} else {
+				    # join them
+				    $first = $first . " " . $value;
+				}
+			    } 
+			    # if here... then end of args. break, break!
+			    $temp{$arg} = $first; # save value
+			    last; 
+			}
+
+		} else {
+			push(@rets, $arg);
+		}
+
+		$arg = shift(@main_argv);
+	}
+	
+	foreach my $i (0..$#items) {
+		$rets[$i] = $temp{$items[$i]};
+	}
+	
+	@rets;			
+} # end of GetArgs2()
+

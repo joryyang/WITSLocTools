@@ -1,0 +1,483 @@
+#! /usr/bin/perl
+# =============================================================================
+#  File:	compare_strings
+#
+#  Contains:	This script compare keys in two .strings file
+#
+#  Version:	V1.5
+#
+#  Copyright:	(c) 2003 by Apple Computer, Inc., all rights reserved.
+#
+#  Contact:     timtan@apple.com
+#
+#  Change History (most recent first):
+#       <6>     12/10/03 v1.5   Hafid Arras  Fix 4348705 (Little Endian support)
+#       <5>     08/04/03 v1.4   Tim Tan      Fix 3357199 & 3356808
+#       <4>     07/01/03 v1.3   Tim Tan      Ignore %%
+#       <3>     06/09/03 v1.2   Tim Tan      Show key/value in one line (3284224)
+#       <2>     06/02/03 v1.1   Tim Tan      Fix 3256868.
+#       <1>     05/08/03 v1.0   Tim Tan      Initial version
+#  Note:
+#       This tool was derived from "compare_key" by adding argument order
+#       feature (which also need to cross reference two .strings files)
+#  Old History of "compare_key":
+#       <4>     10/25/02 v1.3   Tim Tan      adjust the output message(3084810)
+#       <3>     10/02/02 v1.2   Tim Tan      add "-h" option for usage help
+#       <2>     05/03/02 v1.1   Tim Tan      more checking on .strings file 
+#       <1>     05/02/02 v1.0   Tim Tan      Initial version
+# =============================================================================
+
+use Foundation;
+PerlObjCBridge::setDieOnExceptions(\&myHandler);
+
+$EXIT_NORMAL = 0;      # everything is fine
+$EXIT_FATAL = 1;       # internal fatal error (exceptions from PerlObjCBridge)
+$EXIT_WARNING = 2;     # output contain [Warning] message: extra keys in <file2>
+$EXIT_ERROR = 3;       # output contain [Error] message: missing keys in <file2>
+$EXIT_OPEN_FILE = 11;  # file not existed, or can't be opend
+$EXIT_XML = 12;        # .strings file in XML, ignored
+$EXIT_NOT_UTF16 = 13;  # .strings file not in Unicode (UTF-16)
+$EXIT_BAD_FORMAT = 14; # .strings file in bad format (wrong key/value definition)
+$EXIT_USAGE = 20;      # incorrect usage 
+
+if ($#ARGV == 0)
+{
+    if ($ARGV[0] eq "-h" || $ARGV[0] eq "-help")
+    {
+		print "NAME\n";
+		print "\tcompare_strings\n";
+		print "\n";
+		print "SYNOPSIS\n";
+		print "\tcompare_strings <English_strings_file> <Translated_strings_file>\n";
+		print "\n";
+		print "DESCRIPTION\n";
+		print "\tThis tool compares two .strings files and report if any difference found\n";
+		print "\tIt will also check the argument ordering in two .strings file\n";
+		print "\n";
+		print "HISTORY:\n";
+		print "\tVersion 1.5 Recognize Little Endian and Big Endian files\n";
+		print "\tVersion 1.4 Recognize %qd like args and also take care of space in args\n";
+		print "\tVersion 1.3 Ignore %% in argument ordering checking\n";
+		print "\tVersion 1.2 Display multiple line key/value in one line\n";
+		print "\tVersion 1.1 Use Cocoa format setting\n";
+		print "\tVersion 1.0 Initial version\n";
+		exit $EXIT_USAGE;
+    }
+}
+
+if ($#ARGV != 1)
+{
+    print "Usage:  compare_strings <English_strings_file> <Translated_strings_file>\n";
+    exit $EXIT_USAGE;
+}
+
+$file1 = $ARGV[0];
+$file2 = $ARGV[1];
+
+$Debug = 0;
+
+check_file($file1);
+check_file($file2);
+
+$p_warn = 1;
+$has_error = 0;
+$has_warning = 0;
+
+%hash1 = ();
+%hash2 = ();
+
+print "Keys in $file1:\n" if ($Debug);
+list_keys(\%hash1, $file1);
+print "Keys in $file2:\n" if ($Debug);
+list_keys(\%hash2, $file2);
+
+$has_error = 0;
+$has_warning = 0;
+
+$header_printed = 0;
+
+foreach my $key (sort keys %hash1)
+{
+    if (! defined($hash2{$key}))
+    {
+		if (! $header_printed)
+		{
+	    	print "*** followings problem found in $file2 ***\n";
+	    	$header_printed = 1;
+		}
+	
+		$key =~ s/\n/\\n/g;
+		print "[Error]: found missing key [$key] !\n";
+		$has_error = 1;    
+    }
+}
+
+foreach my $key (sort keys %hash2)
+{
+    if (! defined($hash1{$key}))
+    {
+		if (! $header_printed)
+		{
+			print "*** followings problem found in $file2 ***\n";
+			$header_printed = 1;
+		}
+		
+		$key =~ s/\n/\\n/g;
+		print "[Warning]: found extra key [$key] !\n" if($p_warn);
+		$has_warning = 1;
+    }
+}
+
+foreach my $key (sort keys %hash1)
+{
+    if (defined($hash2{$key}))
+    {
+		my $base_value = $hash1{$key};
+		my $loc_value = $hash2{$key};
+		$key =~ s/\n/\\n/g;
+		$base_value =~ s/\n/\\n/g;
+		$loc_value =~ s/\n/\\n/g;
+		check_argument_order2($key, $base_value, $loc_value);
+    }
+}
+
+exit $EXIT_ERROR if $has_error;
+exit $EXIT_WARNING if $has_warning;
+exit $EXIT_NORMAL;
+
+sub myHandler
+{
+    print "** the bad strings file crashed API!\n";
+    exit $EXIT_FATAL;
+} # end of myHandler()
+
+
+sub check_file
+{
+    my $file = shift(@_);
+    my ($c1, $c2);
+
+    if (! (-e $file))
+    {
+		print "** File \"$file\" is not existed!\n";
+		exit $EXIT_OPEN_FILE;
+    }
+    
+    if(! open(FH, "< $file"))
+    {
+		print "** Can't open file: \"$file\"!\n";
+		exit $EXIT_OPEN_FILE;
+    } 
+
+    $_ = <FH>;
+    if ($_ =~ /^<\?xml version=".*" encoding=".*"\?>$/)
+    {
+		print "** File \"$file\" is in XML format. Ignored.\n";
+		exit $EXIT_XML;
+    }
+
+    ($c1, $c2, $_) = unpack("CCa*", $_);
+    if ((! ($c1 == 0xfe && $c2 == 0xff)) && (! ($c1 == 0xff && $c2 == 0xfe)) )
+    {
+		print "** file \"$file\" is not in Unicode(UTF-16BE/LE) format!\n";
+		exit $EXIT_NOT_UTF16;
+    }
+    close FH;
+
+} # end of check_file()
+
+
+sub list_keys
+{
+    my ($hashref, $file) = @_;
+    my ($path, $stringfile, $enumerator, $key, $value);
+
+    $path = NSString->stringWithCString_($file);
+    $stringfile = NSDictionary->dictionaryWithContentsOfFile_($path);
+    if (!$$stringfile)
+    {
+		print "** bad format or wrong key/value definition in file $file!\n";
+	exit $EXIT_BAD_FORMAT;
+    }
+    $enumerator = $stringfile->keyEnumerator();
+
+    while (($key = $enumerator->nextObject()) and $$key) {
+	$value = $stringfile->objectForKey_($key);
+	printf("key:[%s]\tvalue:[%s]\n", $key->UTF8String(), $value->UTF8String()) if ($Debug);
+	$$hashref{$key->UTF8String()} = $value->UTF8String();
+    }
+} # end of list_keys()
+
+
+sub get_args_in_string
+{
+    # Input: $str, $key, $flag
+    # Output: $aref
+    my ($str, $aref, $key, $flag) = @_;
+    
+    # strip %%
+    my $org_str = $str;
+    $str =~ s/%%//g;
+
+    ##    -   A space, specifying that a blank should be left before a positive
+    ##         number produced by a signed conversion (d, e, E, f, g, G, or i).
+
+    ##     The optional character h, specifying that a following d, i, o, u, x,
+    ##     or X conversion corresponds to a short int or unsigned short int
+    ##     argument, or that a following n conversion corresponds to a pointer
+    ##     to a short int argument.
+
+    ##     The optional character q, specifying that a following d, i, o, u, x,
+    ##     or X conversion corresponds to a quad int or unsigned quad int argu-
+    ##     ment, or that a following n conversion corresponds to a pointer to a
+    ##     quad int argument.
+
+    my $i = 0;
+    my $formats = "d|D|i|u|U|h|q|x|X|o|O|f|e|E|g|G|c|C|s|S|p|ld|@";
+    if ($str ne "")
+    {
+		while ($str =~ /\%(\d*\$)?([#|\-|\+| |0])?(\d*)?(\.)?(\d*)?($formats)/g)
+		{
+	    	print "\$1=[$1] \$2=[$2] \$3=[$3] \$4=[$4] \$5=[$5] \$6=[$6]\n" if ($Debug);
+			my @tmp = ($i, $&, $1, $2, $3, $4, $5, $6);
+			my $a2 = $tmp[2+1];
+			my $a6 = $tmp[6+1];
+			
+			if ($a2 eq " ")
+			{
+				# checking args with space, see detail info above
+				if (!(($a6 eq "d") || ($a6 eq "e") || ($a6 eq "E") ||
+					  ($a6 eq "f") || ($a6 eq "g") || ($a6 eq "G") ||
+					  ($a6 eq "i")))
+				{
+					print "\"$tmp[1]\" is not valid argument!\n" if ($Debug);
+				
+					if ($flag eq "base")
+					{
+						print "[Warning] for key [$key]: in English value [$org_str] char '%' before space should be replaced by '%%'. \n" if ($p_warn);
+					}
+					next;
+				}
+			}
+			
+			if (($a6 eq "q") || ($a6 eq "h"))
+			{
+				# checking args with 'q' and 'h', see detail info above
+				my $nextchar = substr($',0,1);
+				# if need to printed: if ($nextchar eq "") {print "no next char\n";} 
+				if (($nextchar eq "d") || ($nextchar eq "i")
+					|| ($nextchar eq "o") || ($nextchar eq "u")
+					|| ($nextchar eq "x") || ($nextchar eq "X"))
+				{
+					$tmp[1] = $tmp[1] . $nextchar;
+				}
+				else
+				{
+					print "[$&$nextchar] is not valid argument!\n" if ($Debug);
+					
+					if ($flag eq "base")
+					{
+						print "[Warning] for key [$key]: note in English value [$org_str] \'$&$nextchar\' is not valid argument'. \n" if ($p_warn);
+					}
+					next;
+				}
+			}
+
+			$$aref[$i++] = \@tmp;
+			print "!!\t\"$tmp[1]\" recognized\n" if ($Debug);
+        }
+    }
+} # end of get_args_in_string()
+
+
+sub check_argument_order2
+{
+    # global var: $p_warn, $has_error, $has_warning
+    my ($key, $base_value, $loc_value) = @_;
+
+    my (@base_args, @loc_args);
+
+    print "...checking argument order for key: [$key] English value: [$base_value] Translated value: [$loc_value]\n" if ($Debug);
+    
+    # get args in base_value
+    get_args_in_string($base_value, \@base_args, $key, "base");
+
+    # get args in loc_value
+    get_args_in_string($loc_value, \@loc_args, $key, "loc");
+
+    my $num_base_args = scalar(@base_args);
+    my $num_loc_args = scalar(@loc_args);
+
+    if ($num_base_args != $num_loc_args)
+    {
+		if ($loc_value ne "")
+		{
+	    	print "[Error] for key [$key]: number of arguments mismatch ($num_base_args in English file and $num_loc_args in translated file) !\n";
+		    $has_error = 1;
+		}
+    }
+
+    if ($num_base_args > 1)
+    {
+		my %deteced = ();
+
+		for ($i = 0; $i < $num_base_args; $i++)
+		{
+			my $arg = $base_args[$i][1];
+			my $ordering = $base_args[$i][2];
+		
+			if ($ordering eq "")
+			{
+				if (! defined($deteced{$arg}))
+				{
+					$deteced{$arg} = 1;
+					print "[Warning] for key [$key]: the value [$base_value] missing argument order for argument \"$arg\". \n" if ($p_warn);
+					$has_warning ++;
+				}
+			}
+			else
+			{
+				$ordering =~ s/\$//g;
+				
+				if ($ordering > $num_base_args)
+				{
+					print "[Error] for key [$key]: the value [$base_value] contains wrong argument order in \"$arg\"! (too big, out of range)\n";
+					$has_error = 1; 
+					return;  # don't borther to check further
+				}
+			}
+		}
+    }
+
+    if ($num_base_args && $num_loc_args)
+    {
+		if ($num_base_args == $num_loc_args)
+		{
+			# check whether arguments in key have ordering
+			my $base_args_order;
+			my $loc_args_order;
+			my $found;
+	
+			$base_args_order = 0;
+			$base_args_order = 1 if ($base_args[0][2] ne "");
+			$loc_args_order = 0;
+			$loc_args_order = 1 if ($loc_args[0][2] ne "");
+	
+			$found = 0;
+			for ($i = 1; $i < $num_base_args; $i++)
+			{
+				if ($base_args_order)
+				{
+					$found = 1 if ($base_args[$i][2] eq "");
+				}
+				else
+				{
+					$found = 1 if ($base_args[$i][2] ne "");
+				}
+			}
+
+			if ($found)
+			{
+				print "[Error] for key [$key]: not every argument has argument order in value [$base_value]!\n";
+				$has_error = 1;
+				return;  # don't borther to check further
+			}
+			
+			$found = 0;
+			for ($i = 1; $i < $num_loc_args; $i++)
+			{
+				if ($loc_args_order)
+				{
+					$found = 1 if ($loc_args[$i][2] eq "");
+				}
+				else
+				{
+					$found = 1 if ($loc_args[$i][2] ne "");
+				}
+			}
+
+			if ($found)
+			{
+				print "[Error] for key [$key]: not every argument has argument order in value [$loc_value]!\n";
+				$has_error = 1;
+				return;  # don't borther to check further
+			}
+	
+			if (($base_args_order == 1) && ($loc_args_order == 0))
+			{
+				## case 1: has order in base_value part, no order in loc_value part
+				print "[Error] for key [$key]: the value [$loc_value] missing argument order in translated file!\n";
+				$has_error = 1; 
+				
+				return;  # don't borther to check further
+			}
+	
+			for ($i = 0; $i < $num_base_args; $i++)
+			{
+				if ($loc_args_order == 0)
+				{
+					## case 2: no order in base_value part, no order in loc_value part
+					if ($base_args[$i][1] ne $loc_args[$i][1])
+					{
+						print "[Error] for key [$key]: argument order in value [$loc_value] in the translated file is different with the value [$base_value] in the English file!\n";
+						$has_error = 1; 
+						return;  # don't borther to check further
+					}
+				}
+				else
+				{
+					# get the order(in loc_value) from the string, e.g from "%3$@" get "3"
+					my $arg_in_loc = $loc_args[$i][1];
+					my $order = ($arg_in_loc =~ /^\%(\d*)\$/)[0];
+
+					if ($order > $num_base_args)
+					{
+						print "[Error] for key [$key]: wrong argument order of \"$arg_in_loc\" in value [$loc_value] in the translated file! (too big, out of range)\n";
+						$has_error = 1; 
+						return;  # don't borther to check further
+					}
+		
+		
+					if ($base_args_order == 0)
+					{
+						## case 3: no order in base_value part, has order in loc_value part
+						# from the order to get the corespoding arg string (in base_value)
+						my $arg_in_base = $base_args[$order-1][1];
+						my $adjusted_arg_in_loc = $arg_in_loc;
+						$adjusted_arg_in_loc =~ s/^\%(\d*\$)(.*)$/\%$2/;
+						
+						if ($adjusted_arg_in_loc ne $arg_in_base)
+						{
+							print "[Error] for key [$key]: the argument in \"$arg_in_loc\" in the translated file does not match the argument \"$arg_in_base\" in the English file!\n";
+							$has_error = 1; 
+							return;  # don't borther to check further
+						}
+					}
+					else
+					{
+						## case 4: has order in base_value part, has order in loc_value part
+			
+						# note it's legal in the base_value that the sequence don't follow nature order
+						# e.g, "... %2$@ %3$d %1$f ..." = " ..... ";
+						my $matched = 0;
+						
+						for (my $j = 0; $j < $num_base_args; $j++)
+						{
+							if ($arg_in_loc eq $base_args[$j][1])
+							{
+								$matched = 1;
+								last;
+							}
+						}
+	
+						if (! $matched)
+						{
+							print "[Error] for key [$key]: argument \"$arg_in_loc\" in translated file doesn't match any argument in English file!\n";
+							$has_error = 1; 
+						}
+					}
+				}
+			}
+		}
+    }
+} # end of check_argument_sequence()

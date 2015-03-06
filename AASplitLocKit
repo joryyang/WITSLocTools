@@ -1,0 +1,206 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AASplitLocKit
+##        Author:	Stanley Au-Yeung
+##          Date:	Monday, Feb 18, 2008
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	02/18/08	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use Getopt::Long;
+use File::Basename;
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+$version = "1.0";
+
+my $gDebug = 0;
+my $gLocKit = "";
+my $gComponent = "";
+my $gAppleGlotEnvPath = "";
+my $h;
+my $v;
+my $getVersion;
+my @gADChanges = ();
+my @gALAChanges = ();
+
+
+&usage()
+    unless @ARGV and GetOptions(
+    'locKit=s'                  => \$gLocKit,
+    'comp=s'                    => \$gComponent,
+    'h'                         => \$h,
+    'v'                         => \$v,
+    'debug'                     => \$gDebug,
+    'getVersion'                => \$getVersion,
+    );
+
+
+if ($h)
+{
+	&usage();
+}
+elsif ($v)
+{
+	print "Version $version\n";
+}
+elsif ($getVersion)
+{
+	print "$version";
+}
+elsif (-e $gLocKit && $gComponent ne "")
+{
+
+	$gLocKit =~ s|/$||;		# remove trailing slash
+
+
+	my $locKitFileName = basename($gLocKit);
+	my $tempFolder = "/tmp/$locKitFileName" . $gComponent;
+
+
+	# Using VFS & DiskImage to do the image mounting and copying
+	# much cleaner and safer than calling hdid and hdiutil directly.
+	my $dmgObj = undef;
+	my $mountpoint = undef;
+	
+	# mount the image
+	$dmgObj = DiskImage->new(image => $gLocKit);
+	$dmgObj->attach(readonly => 1);
+				
+	# copy its contents
+	$mountpoint = $dmgObj->getOneMountpoint();
+	
+	if ($mountpoint)
+	{
+		#-------------------------------------------------------------------------------------
+		#	Copy LKCX files
+		#-------------------------------------------------------------------------------------
+
+		my $srcFolder;
+		my $destFolder;
+		
+		PrintLog("Copying _LKCXInfo\n");
+		$srcFolder = $mountpoint . "/_LKCXInfo/";
+		$destFolder = $inLocEnvPath . "_LKCXInfo/"; 
+
+		if (-d "$srcFolder")
+		{
+			`ditto "$srcFolder" "$destFolder"`;
+		}
+		else
+		{
+			PrintLog("### ERROR: Can't find _LKCXInfo folder in the Loc Kit\n");
+		}
+
+		
+		PrintLog("Copying Submission Tarballs to Components folder\n");
+		$srcFolder = $mountpoint . "/Submission/";
+		$destFolder = $inLocEnvPath . "Components/"; 
+
+		if (-d "$srcFolder")
+		{
+			`ditto "$srcFolder" "$destFolder"`;
+		}
+		else
+		{
+			PrintLog("### ERROR: Can't find Submission folder in the Loc Kit\n");
+		}
+
+		
+		PrintLog("Copying Env_NoGlot\n");
+		$srcFolder = $mountpoint . "/Env_NoGlot/";
+		$destFolder = $inLocEnvPath . "Env_NoGlot/"; 
+
+		if (-d "$srcFolder")
+		{
+			`ditto "$srcFolder" "$destFolder"`;
+		}
+		else
+		{
+			PrintLog("### WARNING: Can't find Env_NoGlot folder in the Loc Kit\n");
+		}
+		
+		
+		PrintLog("Copying AppleGlot Env\n");
+		$srcFolder = $mountpoint . "/Env/";
+
+		if (-d "$srcFolder")
+		{
+			`ditto "$srcFolder" "$appleGlotEnvPath"`;
+
+			PrintLog("Fixing AppleGlot Env permission\n");
+			system "sudo chmod -R +w $appleGlotEnvPath*";
+		}
+		else
+		{
+			PrintLog("### ERROR: Can't find AppleGlot folder in the Loc Kit\n");
+		}
+
+		
+		PrintLog("Copying GlotEnv\n");
+		`addGlotEnvToLocEnv -LXKitRoot $mountpoint`;
+
+
+	}
+	else
+	{
+		PrintLog("ERROR: Could not mount Loc Kit image: $gLocKit\n");
+	}
+	
+	# unmount the image
+	$dmgObj->detach();
+	
+	`rm $tempFolder` if (-d "$tempFolder");
+}
+
+exit(0);
+
+
+
+#---------------------------------------------------------------------------------------------
+#	usage
+#---------------------------------------------------------------------------------------------
+
+sub usage
+{
+    print "AASplitLocKit $version]\n\n";
+    print "  -lockit				- Loc Kit\n";
+    print "  -comp					- Component\n";
+    print "  -h           			- Show this help \n";
+    exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

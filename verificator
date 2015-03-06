@@ -1,0 +1,315 @@
+#!/usr/bin/perl
+
+
+my $gDisplayUsageDetail = 0;
+if ($#ARGV <= 0) {
+    if ($ARGV[0] eq "-h" || $ARGV[0] eq "-help") {
+	$gDisplayUsageDetail = 1;
+	usage();
+	exit 1;
+    }
+}
+
+
+my ($myfolder, @unknown) = GetArgs2("-newLoc");
+
+if ($myfolder eq "") {
+    print "Wrong: NewLoc directory not specified\n";
+    $gDisplayUsageDetail = 1;
+    usage();
+    exit 1;
+}
+
+if ($#unknown >= 0) {
+    print "unknow option:  ";
+    for (my $i=0; $i<=$#unknown; $i++) {
+	print "$unknown[$i] ";
+    }
+    print "\n";
+    usage();
+    exit 1;
+}
+
+
+# trim tailing slash
+$myfolder =~ s/\/$//g;
+
+
+my @nibs = `find \"$myfolder\" -name \"classes.nib\" \| grep -v \"objects.nib\" \| grep -v \"~.nib\" \| grep -v \"English.lproj\" \| grep -v \"en.lproj\" \| grep -v \"\/._\"`;
+#print Dumper @nibs;
+
+print "<html>
+
+<head>
+<style>
+<!--table {}
+.style0
+	{text-align:general;
+	vertical-align:bottom;
+	white-space:nowrap;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	border:none;}
+td
+	{padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Verdana;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	white-space:nowrap;}
+.xl24
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:none;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#99CCFF;}
+.xl25
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:1.0pt solid windowtext;
+	background:#99CCFF;}
+.xl26
+	{font-size:12.0pt;
+	font-weight:700;
+	text-align:center;
+	border-top:1.0pt solid windowtext;
+	border-right:1.0pt solid windowtext;
+	border-bottom:none;
+	border-left:none;
+	background:#99CCFF;}
+.xl27
+	{border:1.0pt solid windowtext;}
+-->
+</style>
+</head>
+
+<body >
+
+<table border=0 cellpadding=0 cellspacing=0 width=561 style='border-collapse:
+ collapse;table-layout:fixed'>
+ <col width=305>
+ <col width=305>
+ <col width=305>
+ <tr height=17>
+  <td height=17 class=xl24 width=178>NewBase Nib</td>
+  <td class=xl25 width=185>NewLoc Nib</td>
+  <td class=xl26 width=198>NewLoc ~nib</td>
+ </tr>";
+ 
+my $count=0;
+foreach my $nib (@nibs){
+    $nib =~ s/'/'\\''/g;
+    $nib =~ s/\n//g;
+    
+     my $lang = $nib;
+                        $lang =~ m/(.*)\/(.*).lproj(.*)/;
+                        $lang = $2;
+    my $NBLink = $nib;
+    $NBLink =~ s/$lang/English/ig;
+ 
+    my $open = 1;
+    if ( !open( INFILE, "$nib" )) {
+	    print "## %%%%% ERROR - CAN'T OPEN FILE $nib\n";
+	    $open = 0;
+    }
+	if ( !open( INFILE2, "$NBLink" )) {
+	    print "## %%%%% ERROR - CAN'T OPEN FILE $NBLink\n";
+	    $open = 0;
+    }	
+    
+    if ($open){
+        #print "diff '$nib' '$NBLink'\n";
+        my $exit = `diff '$nib' '$NBLink'`;
+        #print "YO : $nib $exit\n";
+	    if (length($exit) > 1) {
+	    
+	        undef $/;
+    		$data = <INFILE>;
+			$/ = $saveRS;
+			$data =~ s/\s//g;
+			$data =~ s/\n//g;
+					
+			$data =~ s/^\s+//;
+	        $data =~ s/\s+$//;
+	                
+	                
+					#if (length($data) <35) {
+					if ($data=~ m/IBClasses=\W\W;/){
+		    		    $count++;
+						$nib =~ m/(.*)\/classes.nib$/g;
+                        $nib = $1;
+                        my $nibname = $nib;
+                         $nibname =~ m#(.*)\/(\w*).nib(.*)$#ig;
+                         $nibname = $2;
+                        
+                        my $tildeNib = $nib;
+                        $tildeNib =~ s#\.nib#\~\.nib#;
+                        
+                        if (-d "$tildeNib"){
+                            $tildeNib = "<a href=\"nib:/$tildeNib\?-1\">$nibname<\/a>";
+                         } else {
+                            $tildeNib = "not available";
+                         }
+                       
+     
+   
+                        print "<tr height=14>
+                        <td height=14 class=xl27><a href=\"nib:/$NBLink?-1\">$nibname<\/a></td>
+                        <td class=xl27><a href=\"nib:/$nib\?-1\">$nibname<\/a></td>
+                        <td class=xl27>$tildeNib<\/a></td>
+                        </tr>\n"; 
+	                 }
+        }
+   } 
+}
+    
+
+
+print " <tr height=14>
+  <td height=14 class=xl33>Total</td>
+  <td class=xl34>$count</td>
+  <td class=xl35></td>
+ </tr>
+ </table>
+</body>
+</html>";
+
+
+
+
+
+sub GetArgs2 {
+	my(@items) = @_;
+	my(@rets, %temp, $arg);
+	my($first, $value);
+	my(@main_argv) = @main::ARGV;
+
+	foreach my $item (@items) {
+		$temp{$item} = '';
+		push(@rets, '');
+	}
+	
+	#skip till the first option flag
+	while ($arg = shift(@main_argv)) {
+	    if ($arg =~ /^-/) { # yes, found the first flag
+		# break out
+		last;
+	    }
+	}
+MLOOP:	while ($arg) {
+		# A secret feature!
+		if ($arg eq '-Debug') {
+			$main::Debug = 1;
+			next;
+		}
+
+		if (defined($temp{$arg})) {
+			# need to modify the logic here!
+			# $temp{$arg} = shift(@main_argv);
+			$first = shift(@main_argv);
+			if (! $first) {
+			    # the end, break out
+			    last;
+			}
+			if ($first =~ /^-/) {
+			    # it's a flag, not value!
+			    # continue main loop
+			    $arg = $first;
+			    next;
+			} else {
+			    # put the value to hashtable
+			    # $temp{$arg} = $first;
+			    ## how about mutiple values?
+			    ## join them together in a string!
+			    # run a loop to check out all values
+			    while ($value = shift(@main_argv)) {
+				if ($value =~ /^-/) {
+				    # it's a flag, not value!
+				    # continue main loop
+				    $temp{$arg} = $first; # save value
+				    $arg = $value;
+				    next MLOOP;
+				} else {
+				    # join them
+				    $first = $first . " " . $value;
+				}
+			    } 
+			    # if here... then end of args. break, break!
+			    $temp{$arg} = $first; # save value
+			    last; 
+			}
+
+		} else {
+			push(@rets, $arg);
+		}
+
+		$arg = shift(@main_argv);
+	}
+	
+	foreach my $i (0..$#items) {
+		$rets[$i] = $temp{$items[$i]};
+	}
+	
+	@rets;			
+} # end of GetArgs2()
+
+sub IsOptDefined {
+    my($opt) = $_[0];
+    my($ret, $item);
+
+    $ret = 0;
+    foreach $item(@main::ARGV) {
+	if ($opt eq $item) {
+	    $ret = 1;
+	    last;
+	}
+    }
+
+    $ret;
+} # end of IsOptDefined()
+
+
+sub usage {
+    if ($gDisplayUsageDetail) {
+    print "\n--USAGE\n";
+	print "NAME\n";
+	print "\tverificator\n";
+	print "\n";
+	print "SYNOPSIS\n";
+	print "\tverificator -newLoc <dir_path>\n";
+	print "\n";
+	print "DESCRIPTION\n";
+	print "\tThis tools gets the nibs that seems impacted by 4787887\n";
+	print "\n";
+	print "\tThe options are as follows:\n";
+	print "\n";
+	print "\t\t-newLoc       : specify the folder path to NewLoc\n";
+	print "\n";
+	print "EXAMPLE\n";
+	print "\tverificator -newLoc /Users/arrashaf/Desktop/Env2/_NewLoc/ >/D-Leopard9A274_ListOfNibsWithUnsupportedObjects.html\n";
+	print "\n";
+	print "HISTORY:\n";
+	print "\tVersion 1.0\n";
+	print "\n";
+    } else {
+	print "Usage: verificator -newLoc <dir_path>\n";
+    }
+} # end of usage()

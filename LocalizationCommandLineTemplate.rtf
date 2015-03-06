@@ -1,0 +1,245 @@
+{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf410
+{\fonttbl\f0\fnil\fcharset77 HelveticaNeue-Bold;\f1\fswiss\fcharset77 Helvetica-Bold;\f2\fswiss\fcharset77 Helvetica;
+\f3\fnil\fcharset77 HelveticaNeue;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue255;\red0\green128\blue0;\red255\green0\blue0;
+\red0\green59\blue241;\red66\green121\blue28;\red64\green128\blue0;\red128\green0\blue128;\red77\green141\blue33;
+}
+\paperw11899\paperh16839\margl1440\margr1440\vieww11840\viewh18060\viewkind0
+\deftab720
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+
+\f0\b\fs44 \cf2 Apple Asia Localization Command Line
+\f1\fs24 \
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+
+\f2\b0 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == createLocEnv ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -createLocEnv -locenv \cf4 PathOfLocEnv;exit\
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf2 \
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf0 What the command do:\
+\pard\tx480\tx960\tx1440\tx1920\tx2400\tx2880\tx3360\tx3840\tx4320\tx4800\tx5280\tx5760\tx6240\tx6720\tx7200\tx7680\tx8160\tx8640\tx9120\tx9600\tx10080\tx10560\tx11040\tx11520\tx12000\tx12480\tx12960\tx13440\tx13920\tx14400\tx14880\tx15360\tx15840\tx16320\tx16800\tx17280\tx17760\tx18240\tx18720\tx19200\tx19680\tx20160\tx20640\tx21120\tx21600\tx22080\tx22560\tx23040\tx23520\tx24000\tx24480\tx24960\tx25440\tx25920\tx26400\tx26880\tx27360\tx27840\tx28320\tx28800\tx29280\tx29760\tx30240\tx30720\tx31200\tx31680\tx32160\tx32640\tx33120\tx33600\tx34080\tx34560\tx35040\tx35520\tx36000\tx36480\tx36960\tx37440\tx37920\tx38400\tx38880\tx39360\tx39840\tx40320\tx40800\tx41280\tx41760\tx42240\tx42720\tx43200\tx43680\tx44160\tx44640\tx45120\tx45600\tx46080\tx46560\tx47040\tx47520\tx48000\pardeftab720\ql\qnatural\pardirnatural
+\cf0 \CocoaLigature0 1. Create Loc Environment folder if not exist\
+2. Change the mode of Loc Environment folder to 777\
+3. Use setLocEnv to set current Loc Env\
+4. Create AppleGlot Environment folder inside Loc Environment folder\
+5. Create Reports folder inside Loc Environment folder\
+6. Create Check List folder inside Loc Environment folder\
+7. Copy Check Lists to Check List folder\
+8. Create History folder inside Loc Environment folder\
+9. Create Translation Submit folder inside Loc Environment folder\
+10. Localize Globals file\
+11. Create autoFtp_<cc>.txt file to Reports folder\
+12. Create Loc Tools report to Reports folder\
+13. Create Command Line file\
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf2 \CocoaLigature1 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == copyLocKit ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -copyLocKit -locenv \cf4 PathOfLocEnv\cf5  \cf3 -file\cf5  \cf4 <LocKitDmgPath>\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf0 \
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf0 What the command do:\
+\pard\tx480\tx960\tx1440\tx1920\tx2400\tx2880\tx3360\tx3840\tx4320\tx4800\tx5280\tx5760\tx6240\tx6720\tx7200\tx7680\tx8160\tx8640\tx9120\tx9600\tx10080\tx10560\tx11040\tx11520\tx12000\tx12480\tx12960\tx13440\tx13920\tx14400\tx14880\tx15360\tx15840\tx16320\tx16800\tx17280\tx17760\tx18240\tx18720\tx19200\tx19680\tx20160\tx20640\tx21120\tx21600\tx22080\tx22560\tx23040\tx23520\tx24000\tx24480\tx24960\tx25440\tx25920\tx26400\tx26880\tx27360\tx27840\tx28320\tx28800\tx29280\tx29760\tx30240\tx30720\tx31200\tx31680\tx32160\tx32640\tx33120\tx33600\tx34080\tx34560\tx35040\tx35520\tx36000\tx36480\tx36960\tx37440\tx37920\tx38400\tx38880\tx39360\tx39840\tx40320\tx40800\tx41280\tx41760\tx42240\tx42720\tx43200\tx43680\tx44160\tx44640\tx45120\tx45600\tx46080\tx46560\tx47040\tx47520\tx48000\pardeftab720\ql\qnatural\pardirnatural
+\cf0 \CocoaLigature0 1. Check whether Loc Kit country code equal to Loc Env or not\
+2. Copy Loc Kit contents to Loc Environment\
+3. Copy tarballs to Component folder\
+4. Copy AppleGlot Env\
+5. Fix AppleGlot Env permission\
+6. Copy GlotEnv (using addGlotEnvToLocEnv)\
+7. Set AppleGlot enviroment Language\
+8. Update AutoLayout Adjust Log\
+9. Count WG files\
+10. Check Loc Kit\
+11. Create ALA log file\
+12. Run verificator\
+12. locuntar\
+	backup Projects to Projects_US\
+	backup Info to Info_Org\
+14. Run flidentifier\
+15. Build file list\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf0 \CocoaLigature1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf4 Localizers:\
+1. Ask PMs for the 
+\f3 MailNotify or MailNotify.SHSR and put them to info_Org.\
+2. check _checkLocKitLog.txt report in Reports folder.\
+3. check _verificator.html report in Reports folder.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2 \cf0 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == prepareTranslationKit ================\cf3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -prepareTranslationKit -locenv\cf4  PathOfLocEnv\
+\
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf0 What the command do:\
+\pard\tx480\tx960\tx1440\tx1920\tx2400\tx2880\tx3360\tx3840\tx4320\tx4800\tx5280\tx5760\tx6240\tx6720\tx7200\tx7680\tx8160\tx8640\tx9120\tx9600\tx10080\tx10560\tx11040\tx11520\tx12000\tx12480\tx12960\tx13440\tx13920\tx14400\tx14880\tx15360\tx15840\tx16320\tx16800\tx17280\tx17760\tx18240\tx18720\tx19200\tx19680\tx20160\tx20640\tx21120\tx21600\tx22080\tx22560\tx23040\tx23520\tx24000\tx24480\tx24960\tx25440\tx25920\tx26400\tx26880\tx27360\tx27840\tx28320\tx28800\tx29280\tx29760\tx30240\tx30720\tx31200\tx31680\tx32160\tx32640\tx33120\tx33600\tx34080\tx34560\tx35040\tx35520\tx36000\tx36480\tx36960\tx37440\tx37920\tx38400\tx38880\tx39360\tx39840\tx40320\tx40800\tx41280\tx41760\tx42240\tx42720\tx43200\tx43680\tx44160\tx44640\tx45120\tx45600\tx46080\tx46560\tx47040\tx47520\tx48000\pardeftab720\ql\qnatural\pardirnatural
+\cf0 \CocoaLigature0 1. prepGlossaryForTM WG files from _WorkGlossary_New to WG_Transit folder\
+2. Use AAProcessNonGlotableFiles to extract non-glottable files by project to _NonGlotable folder\
+3. Backup _NonGlotable folder to _NonGlotable_Org\
+4. Backup _WorkGlossary folder to _WorkGlossary_Org\
+5. Copy AD files from _ApplicationDictionaries to Translation Kit _ApplicationDictionaries folder\
+6. Copy WG files from WG_Transit to Translation Kit _WorkGlossary_New folder\
+7. Copy WG files from _WorkGlossary_Candidates to Translation Kit _WorkGlossary_Candidates folder\
+8. Copy TMX file (_WorkGlossary_Candidates.tmx) of _WorkGlossary_Candidates to Translation Kit\
+9. Copy WG files from _WorkGlossary_Review to Translation Kit _WorkGlossary_Review folder\
+10. Copy Non-Glottable files (_NonGlotable) to Translation Kit (Others)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf4 \CocoaLigature1 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == splitTranslationKit ================\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -splitTranslationKit \cf4 PathOfLocEnv\
+\
+\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == makeTranslationKitDmg ===============\
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -makeTranslationKitDmg -locenv \cf4 PathOfLocEnv\
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf0 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == splitLocEnv ===============\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -splitLocEnv -locenv \cf4 PathOfLocEnv\cf0 \
+\pard\tx565\tx1133\tx1700\tx2266\tx2832\tx3401\tx3967\tx4535\tx5102\tx5669\tx6235\tx6802\pardeftab720\ql\qnatural
+\cf0 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == receiveTranslationKit and receiveTranslationKitWithAD ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -receiveTranslationKit -locenv \cf4 PathOfLocEnv \cf3 -file PathOfTranslationKit\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf3 AALocCommand -receiveTranslationKitWithAD -locenv \cf4 PathOfLocEnv \cf3 -file PathOfTranslationKit\cf0 \
+\
+If there is an error, you need to run -mergeWGFiles yourself:\
+\cf3 AALocCommand -mergeWGFiles -locenv \cf4 PathOfLocEnv\cf0 \
+\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == backupReviewedWG ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -backupReviewedWG -locenv \cf4 PathOfLocEnv\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 \
+== restoreNonGlotableFiles ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -restoreNonGlotableFiles -locenv \cf4 PathOfLocEnv\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf0 \
+\pard\pardeftab720\ql\qnatural
+
+\f1\b \cf2 \
+== runAppleGlotPass2And3 ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -runAppleGlotPass2And3 -locenv \cf4 PathOfLocEnv\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf2 \
+\pard\pardeftab720\ql\qnatural
+\cf0 If there is an error, you need to run AppleGlot Pass 2 yourself:\
+\pard\pardeftab720\ql\qnatural
+\cf6 AALocCommand -runAppleGlotPass3 \cf3 -locenv \cf4 PathOfLocEnv\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == localizeLocversionPlist ================\
+\pard\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -localizeLocversionPlist -locenv\cf7  \cf4 PathOfLocEnv\cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf8 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == autolayoutadjuster ================\
+\pard\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -autoLayout -locenv\cf7  \cf4 PathOfLocEnv\cf9 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 \
+== aaCheckAll ================\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -aaCheckAll -locenv \cf4 PathOfLocEnv\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 ==  dittoProj ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -dittoProj -locenv \cf4 PathOfLocEnv\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+\cf8 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 == loctar ================\cf8 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -loctar -locenv \cf4 PathOfLocEnv\cf8 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 \
+== backupLocEnv ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -backupLocEnv\cf2  \cf4 PathOfLocEnv\cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f1\b \cf2 \
+== 
+\f0 prepareLocEngDoneImage
+\f1  ================\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural
+
+\f2\b0 \cf3 AALocCommand -
+\f3 prepareLocEngDoneImage
+\f2  -locenv \cf4 PathOfLocEnv\
+\
+\
+}

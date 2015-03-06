@@ -1,0 +1,204 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAMergeGlossaries
+##        Author:	Stanley Au-Yeung
+##          Date:	Friday, Nov 17, 2006.
+##
+##   Description:	What it does...
+##
+##                       Copyright Apple Computer Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	11/17/06	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use Evolution;
+use MatchBox::XML;
+use Getopt::Long;
+use Error qw(:try);
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+$version = "1.0.1";
+
+my ($baseAD, $mergeAD, $h, $v, $getVersion);
+
+&usage()
+    unless @ARGV and GetOptions(
+    'baseAD=s'                  => \$baseAD,
+    'mergeAD=s'                 => \$mergeAD,
+    'h'                         => \$h,
+    'v'                         => \$v,
+    'getVersion'                => \$getVersion,
+    );
+
+
+if ($h)
+{
+	&usage();
+}
+
+
+if ($v)
+{
+	print "Version $version\n";
+}
+
+
+if ($getVersion)
+{
+	print "$version";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#  Main
+#---------------------------------------------------------------------------------------------
+
+if ((-d $baseAD) && (-d $mergeAD))
+{
+	my $directory;
+	my $file;
+
+	opendir(directory, $baseAD);
+	@searchResult = grep { !/^\./} readdir(directory);
+	closedir(directory);
+
+	foreach $file (@searchResult)
+	{
+		if (-e "$mergeAD$file")
+		{
+			print "Processing $file: merging with fixed AD\n";
+			MergeGlossary("$baseAD$file", "$mergeAD$file");
+		}
+		else
+		{
+			print "Processing $file: no fixed AD\n";
+		}
+	}
+}
+elsif ((-e $baseAD) && (-e $mergeAD))
+{
+	print "Processing $baseAD\n";
+	MergeGlossary($baseAD, $mergeAD);
+}
+else
+{
+
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	MergeGlossary
+#---------------------------------------------------------------------------------------------
+
+sub MergeGlossary
+{
+	my($inBaseAD, $inMergeAD) = @_;
+
+	my $baseADXML;
+	my $mergeADXML;
+	
+	try
+	{
+		$baseADXML = MatchBox::XML->new( file => $inBaseAD, validate => 1 );
+	}
+	catch
+	{
+		my $E = shift;
+		die "Error: opening '$inBaseAD'. Is this valid XML?\n\tXML::LibXML::Parser error: $E";
+	};
+	
+	
+	try
+	{
+		$mergeADXML = MatchBox::XML->new( file => $inMergeAD, validate => 1 );
+	}
+	catch
+	{
+		my $E = shift;
+		die "Error: opening '$mergeADXML'. Is this valid XML?\n\tXML::LibXML::Parser error: $E";
+	};
+	
+	
+	try
+	{
+		foreach my $baseElement ( $baseADXML->translationElements() )
+		{
+			# find element in our document
+			my @destElements = $mergeADXML->translationElements(
+				filePath => $baseElement->filePath,
+				position => $baseElement->position
+			);
+	
+			if ( scalar @destElements == 1 )
+			{
+				my $destElement = $destElements[0];
+				my $originalTranslatedString = $baseElement->string;
+				my $translatedString = $destElement->string;
+
+
+				if ($originalTranslatedString ne $translatedString)
+				{
+					$baseElement->setString( string => $translatedString );
+					
+					binmode STDOUT, ":utf8";
+					# print "File Path:  $baseElement->filePath\n";
+					# print "Position:   $baseElement->position\n";
+					print "Tran (Org): $originalTranslatedString\n";
+					print "Tran (New): $translatedString\n";
+					print "\n";
+				}
+			}
+		}
+	}
+	catch
+	{
+		my $E = shift;
+		die "Error: merging '$file'. Is this valid XML?\n\tXML::LibXML::Parser error: $E";
+	};
+	
+	$baseADXML->save( file => $inBaseAD );
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	usage
+#---------------------------------------------------------------------------------------------
+
+sub usage
+{
+    print "AAMergeGlossaries [Version $version] - Merge .ad files.\n\n";
+    print "  -baseAD	            - base AD File or Folder\n";
+    print "  -mergeAD				- merge AD File or Folder\n";
+    print "  -h           			- Show this help\n";
+    exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

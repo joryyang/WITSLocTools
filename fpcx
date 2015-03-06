@@ -1,0 +1,1069 @@
+#!/usr/bin/perl
+#####################################################################################################
+#    $Id: fpcx,v 1.18 2008/03/10 22:55:47 asaka1 Exp $
+#		pcx filter
+#    
+#    Created by kenji on Fri Jan 10 2002.
+#    Copyright (c) 2002 Apple Computer Inc. All rights reserved.
+#####################################################################################################
+
+use FindBin;
+use lib $FindBin::Bin;
+use Pcxout 1.00;
+use	Pcx 1.00;
+use Foundation;
+use Data::Dumper;
+
+$ignore_case = sub {return ((lc $a) cmp (lc $b))};
+
+
+my ($category, $user, $editor, $fixedURL, $needToFixURL, $silentMode);
+$user = "";
+$editor = "";
+$silentMode = "";
+$colorLabel = "";
+$setLabelForFocusedLoc = 0; 
+$noLabelUpdateEvent = 0;
+$iblockingrules = 0;
+@gNewFilesNibs = ();
+@gChangedFilesNibs = ();
+$setFinderLabelPath = "";
+
+
+# Check to see if setFinderLabelPath exists in the same directory in myself (fpcx)
+# It is the case when running pcxapp. Both fpcx and setFinderLabelPath are in Resources directory of pcxapp bundle.
+$fpcxPath = $0;
+$fpcxPath =~ m|^(.+)/fpcx$|;
+$fpcxParent = $1;
+$setFinderLabelPath = $fpcxParent. '/' . 'setFinderLabel';
+unless  (-e $setFinderLabelPath) {
+	$setFinderLabelPath = "";
+}
+
+# Get parameters
+while (@ARGV and $ARGV[0] =~ /^-/) {
+    $_ = shift;
+    if (/^-L$/i) { $user = "localizer"; }
+	elsif (/^-K/i) { $user = "kenji"; }
+	elsif (/^-NV/i) { $user = "nib_verify"; }
+	elsif (/^-V/i) { $user = "verify"; }
+	elsif (/^-(0x[0-9a-f]{1,16}$)/i) { $user = $1; }
+	elsif (/^-F1/i) { &find_filter; exit 0; }
+	elsif (/^-purl/i) { $purl = 1; }
+	elsif (/^-popen/i) { $popen = 1; }
+	elsif (/^-fm/i) { $opendiffInFileMerge = 1; }
+	elsif (/^-s/i) { $silentMode = 1; }
+	elsif (/^-glv/i) { $graphicLeverageScript = 1; }
+	elsif (/^-cl/i) { $colorLabel = 1; }
+	elsif (/^-adviewer/i) { $editor = "adviewer"; }
+	elsif (/^-label_focusedLoc/i) { $setLabelForFocusedLoc = 1; }
+	elsif (/^-nolabelupdateevent/i) { $noLabelUpdateEvent = 1; }
+	elsif (/^-iblockingrules/i) { $iblockingrules = 1; }
+	else {print "# Invalid parameter:$_\n"; }
+}
+
+unless ($silentMode) {
+    print "# Getneated by fpcx v1.3.\n";
+    if ($user) {print "# Filtering options:", $user, "\n"};
+}
+
+if ($editor eq "adviewer") {
+    $quoteForURL_open = "<";
+    $quoteForURL_close = ">";
+    $openCommand = "";
+    $needToFixURL = "";
+} else {
+    $openCommand = "open ";
+    $quoteForURL_open = "\"";
+    $quoteForURL_close = "\"";
+    $needToFixURL = 1;
+} 
+
+#-------------------------------------------------------------------------------------------
+#   Disable $setLabelForFocusedLoc and $colorLabel bits if osascript tool doesn't exist.
+#-------------------------------------------------------------------------------------------
+if ($setLabelForFocusedLoc || $colorLabel) {
+	$path2osascript = `which osascript`;
+	chomp $path2osascript;
+	if (($path2osascript =~ m/Command not found/) && ($setFinderLabelPath eq "")) {
+		$setLabelForFocusedLoc = 0;
+		$colorLabel = 0; 
+	};
+}
+
+#-------------------------------------------------------------------
+#	Read and parse pcx output. Store the result in arrays/classes.
+#-------------------------------------------------------------------
+my @pcxout = <>;
+&Parse_pcxout(\@pcxout, $user);
+
+
+#-----------------------------------------------------
+#	Print pcx progress information
+#-----------------------------------------------------
+foreach (@pcx_progress) {
+	print;
+}
+
+
+#-----------------------------------------------------
+#	Print string error messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_string_error, "Invalid string file.", "Please check the string file.");
+foreach (@pcx_string_error) {
+	print;
+}
+&print_entity_separator(scalar @pcx_string_error);
+
+
+#-----------------------------------------------------
+#	Print nibtool error messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_nibtool_error, "nibtool error ", "messages");
+foreach (@pcx_nibtool_error) {
+	print;
+}
+&print_entity_separator(scalar @pcx_nibtool_error);
+
+
+#-----------------------------------------------------
+#	Print other error messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_error, "Error ", "messages");
+foreach (@pcx_error) {
+	print;
+}
+&print_entity_separator(scalar @pcx_error);
+
+
+#-----------------------------------------------------
+#	Print warning messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_warning, "Warning ", "messages");
+foreach (@pcx_warning) {
+	print;
+}
+&print_entity_separator(scalar @pcx_warning);
+
+
+#-----------------------------------------------------
+#	Print directory level summary information
+#-----------------------------------------------------
+foreach $category (sort $ignore_case keys %pcx_summary_dir) {
+	&print_header(1, $category, "directories");
+	foreach (sort $ignore_case @{$pcx_summary_dir{$category}}) {
+        print $_, "\n";
+    }
+	&print_category_separator;
+}
+&print_entity_separator(scalar %pcx_summary_dir);
+
+#-----------------------------------------------------
+#	Print file level summary information
+#-----------------------------------------------------
+foreach $category (sort $ignore_case keys %pcx_summary_file) {
+	&print_header(1, $category, "data/resource fork files");
+
+	my $fixdNewBase;
+	if (($category eq "new") || ($category eq "obsolete")) {
+		foreach (sort $ignore_case @{$pcx_summary_file{$category}}) {
+			print $_, "\n";
+			if ($colorLabel && ($category eq "new")) {
+				$fixdNewBase = $_;
+				if ($fixdNewBase !~ m|^/|) {
+					# Relative path which means -sh option is specified in pcx
+					# Need to convert it into absolute path
+					$fixdNewBase =~ s|^\./(.+)$|\1|;	# eliminate unnecessary './', path example is ./path/to/the/file
+					$fixdNewBase = $pcx_arguments{target} . '/' . $fixdNewBase;
+				}
+				push (@gNewFilesNibs, $fixdNewBase);
+			}
+		}
+	} else {
+		foreach (sort $ignore_case keys %{$pcx_summary_file{$category}}) {
+			if (join ("" ,@{$pcx_summary_file{$category}->{$_}})) {
+				print $_, " ", "\[@{$pcx_summary_file{$category}->{$_}}\]", "\n";
+			} else {
+				print $_, "\n";
+			}
+			
+			if ($colorLabel && ($category eq "changed")) {
+				my @filePair = split / <-\/\/-> /, $_;
+				if (@filePair == 2) {
+					$fixdNewBase = $filePair[1];
+				} else {
+					$fixdNewBase = $pcx_map_file_source_target{$_};
+				}
+				
+				if ($fixdNewBase !~ m|^/|) {
+					# Relative path which means -sh option is specified in pcx
+					# Need to convert it into absolute path
+					$fixdNewBase =~ s|^\./(.+)$|\1|;	# eliminate unnecessary './', path example is ./path/to/the/file
+					$fixdNewBase = $pcx_arguments{target} . '/' . $fixdNewBase;
+				}
+				push (@gChangedFilesNibs, $fixdNewBase);
+			}
+		}
+	}
+
+
+    # Print open commands for each file
+    if ($popen) {
+        if (($category eq "new") || ($category eq "obsolete")) {
+            foreach (sort $ignore_case @{$pcx_summary_file{$category}}) {
+                if ($needToFixURL) { $fixedURL = &fixURL($_); } else { $fixedURL = $_};
+                print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+            }
+        } else {
+            foreach (sort $ignore_case keys %{$pcx_summary_file{$category}}) {
+                if ($needToFixURL) { $fixedURL = &fixURL($pcx_map_file_source_target{$_}); } else { $fixedURL = $pcx_map_file_source_target{$_}};
+                print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+            }
+        }
+        
+        # ALE "Focused Localization" 
+        # Print open commands for each file in "_NewLoc", if a user compare "_OldBase" and "_NewBase"
+        my $targetLocale = "";
+        my $newLoc;
+        my $headerForNewLocURL = "";
+        if ($category eq "new")  {
+            foreach (sort $ignore_case @{$pcx_summary_file{$category}}) {
+                $targetLocale = &ObtainTargetLocale("_OldBase", $_);
+                if ($targetLocale) {
+                    unless  ($headerForNewLocURL) {
+                        print "##### <<< Localize the following files in _NewLoc. >>>\n"; $headerForNewLocURL = 1;
+                    };
+                    
+					# Figure out the NewLoc path
+                    ($newLoc = $_) =~ s/\/_NewBase\//\/_NewLoc\//g;
+                    $newLoc =~ s/\/(English|en|en_US)\.lproj\//\/$targetLocale\//g;
+            
+					# Set "Red" color to the new files 
+					# Need further discussion on labeling only a non-glottable file.
+					# if ($setLabelForFocusedLoc && ($newLoc !~ m/\.(strings)$/)) {
+					if ($setLabelForFocusedLoc) {
+						push (@gNewFilesNibs, $newLoc);
+					}
+
+					# Construct and print a URL for the NewLoc
+                    if ($needToFixURL) { $fixedURL = &fixURL($newLoc); } else { $fixedURL = $newLoc };
+                    if ($fixedURL =~ m/\.(strings)$/) { print "# Handled_by_Glot "; };
+                    print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+                }
+            }
+        } elsif (($category eq "changed") || ($category eq "identical")) {
+            foreach (sort $ignore_case keys %{$pcx_summary_file{$category}}) {
+                $targetLocale = &ObtainTargetLocale($_, $pcx_map_file_source_target{$_});
+                if ($targetLocale) {
+                    unless  ($headerForNewLocURL) {
+                        if ($category eq "changed") {
+                            print "##### <<< Localize the following files in _NewLoc. >>>\n"; $headerForNewLocURL = 1;
+                        } else {
+                            print "##### <<< If you need a loc bug fix, re-localize the following files in _NewLoc. >>>\n"; $headerForNewLocURL = 1;
+                        }
+                    }; 
+					
+					# Figure out the NewLoc path
+                    ($newLoc = $pcx_map_file_source_target{$_}) =~ s/\/_NewBase\//\/_NewLoc\//g;
+                    $newLoc =~ s/\/(English|en|en_US)\.lproj\//\/$targetLocale\//g;
+            
+					# Set "Yellow" color to the changed files 
+					# Need further discussion on labeling only a non-glottable file.
+					# if ($setLabelForFocusedLoc && ($category eq "changed") && ($newLoc !~ m/\.(strings)$/)) {
+					if ($setLabelForFocusedLoc && ($category eq "changed")) {
+						push (@gChangedFilesNibs, $newLoc);
+					}
+			
+					# Construct and print a URL for the NewLoc
+                    if ($needToFixURL) { $fixedURL = &fixURL($newLoc); } else { $fixedURL = $newLoc };
+                    if ($fixedURL =~ m/\.(strings)$/) { print "# Handled_by_Glot "; };
+                    print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+                }
+            }
+        }
+    }
+    &print_category_separator;
+}
+&print_entity_separator(scalar %pcx_summary_file);
+
+
+#-----------------------------------------------------
+#	Print nib summary information
+#-----------------------------------------------------
+foreach $category (sort $ignore_case keys %pcx_summary_nib) {
+	&print_header(1, $category, "nibs");
+	foreach (sort $ignore_case @{$pcx_summary_nib{$category}}) {
+		print $_, "\n";
+	}
+    
+    # Print open commands for each nib
+    if ($popen) {
+        foreach (sort $ignore_case @{$pcx_summary_nib{$category}}) {
+            if (($category eq "changed") || ($category eq "identical")) {
+                if ($needToFixURL) { $fixedURL = &fixURL($pcx_map_nib_source_target{$_}); } else { $fixedURL = $pcx_map_nib_source_target{$_}};
+                print $openCommand, $quoteForURL_open, "file://localhost",  $fixedURL, $quoteForURL_close, "\n";
+            } else {
+                if ($needToFixURL) { $fixedURL = &fixURL($_); } else { $fixedURL = $_};
+                print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+            }
+        }
+        
+        
+        # ALE "Focused Localization" 
+        # Print open commands for each nib in "_NewLoc", if a user compare "_OldBase" and "_NewBase"
+        my $targetLocale = "";
+        my $newLoc;
+        my $headerForNewLocURL = "";
+        
+        foreach (sort $ignore_case @{$pcx_summary_nib{$category}}) {
+            if ($category eq "new")  {
+                $targetLocale = &ObtainTargetLocale("_OldBase", $_);
+            } elsif (($category eq "changed") || ($category eq "identical")) {
+                $targetLocale = &ObtainTargetLocale($_, $pcx_map_nib_source_target{$_});
+            }
+            
+            if ($targetLocale) {
+                unless  ($headerForNewLocURL) {
+                    if (($category eq "changed") || ($category eq "new")) {
+                        print "##### <<< Localize the following files in _NewLoc. >>>\n"; $headerForNewLocURL = 1;
+                    } elsif ($category eq "identical") {
+                        print "##### <<< If you need a loc bug fix, re-localize the following files in _NewLoc. >>>\n"; $headerForNewLocURL = 1;
+                    }
+                }; 
+            
+                if ($category eq "new")  {
+					# Figure out the NewLoc path
+                    ($newLoc = $_) =~ s/\/_NewBase\//\/_NewLoc\//g;
+                    $newLoc =~ s/\/(English|en|en_US)\.lproj\//\/$targetLocale\//g;
+					
+					# Set "Red" color to the new nibs 
+					if ($setLabelForFocusedLoc) {
+						push (@gNewFilesNibs, $newLoc);
+					}
+                } elsif (($category eq "changed") || ($category eq "identical")) {
+					# Figure out the NewLoc path
+                    ($newLoc = $pcx_map_nib_source_target{$_}) =~ s/\/_NewBase\//\/_NewLoc\//g;
+                    $newLoc =~ s/\/(English|en|en_US)\.lproj\//\/$targetLocale\//g;
+					
+					# Set "Yellow" color to the changed nibs 
+					if ($setLabelForFocusedLoc && ($category eq "changed")) {
+						push (@gChangedFilesNibs, $newLoc);
+					}
+                }
+                
+				# Construct and print a URL for the NewLoc
+                if ($needToFixURL) { $fixedURL = &fixURL($newLoc); } else { $fixedURL = $newLoc};
+                print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+            }
+        }
+    }
+	&print_category_separator;
+}
+&print_entity_separator(scalar %pcx_summary_nib);
+
+
+
+#-----------------------------------------------------
+#	Print file level detailed information
+#-----------------------------------------------------
+foreach (sort name_order @pcx_details) {
+	if ($_) {
+		if ($_->dump($purl, $editor, $popen)) {
+            print "\n";
+        }
+	} else {
+		print "### undefineed \n";
+	}
+}
+
+
+#-----------------------------------------------------
+#	Open text file diff in FileMerge
+#-----------------------------------------------------
+$gFileMergeLaunched = "";
+
+my $opendiff_header_done = "";
+foreach (sort name_order @pcx_details) {
+    if ($_) {
+        if (@{$_->_opendiff} > 0) {
+                
+            unless ($opendiff_header_done) {
+                &print_header(scalar @pcx_details, "opendiff", "command");
+                $opendiff_header_done = 1;
+            }
+                
+            # Print the opendiff command.
+            print @{$_->_opendiff}[0], "\t";
+            print '"', @{$_->_opendiff}[1], '"', "\t";
+            print '"', @{$_->_opendiff}[2], '"', "\n";
+            
+            if ($opendiffInFileMerge) {
+                unless ($gFileMergeLaunched) {
+                    `open -a FileMerge`;
+                    `sleep 3`;
+                    $gFileMergeLaunched = 1;
+                }
+
+                # Execute the opendiff command.
+                $rc = system(@{$_->_opendiff});
+                if ($rc != 0) {
+                    print "### Error: Could not execute opendiff command @{$_->_opendiff}";
+                }
+            }
+        }
+    }
+}
+    
+
+#--------------------------------------------------------
+# Open file/directory level summary report in FileMerge
+#--------------------------------------------------------
+foreach $command (sort keys %pcx_shell_scripts) {
+    next unless ($command eq "summaryOpendiff"); 
+    
+    foreach (@{$pcx_shell_scripts{$command}}) {
+    
+        # Print the opendiff command.
+        print @{$_}[0], "\t";
+        print '"', @{$_}[1], '"', "\t";
+        print '"', @{$_}[2], '"', "\n";
+        $opendiff_header_done = 1;
+    
+        if ($opendiffInFileMerge) {
+            unless ($gFileMergeLaunched) {
+                `open -a FileMerge`;
+                `sleep 3`;
+                $gFileMergeLaunched = 1;
+            }
+        
+            $rc = system(@{$_});
+            if ($rc != 0) {
+                print "### Error: Could not execute opendiff command @{$_}";
+            }
+        }
+    }
+
+}
+if ($opendiff_header_done) {
+    &print_entity_separator(1);
+}
+
+
+
+#-----------------------------------------------------
+#	Print Meta Info messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_metaInfo, "Meta Info ", "messages");
+foreach (@pcx_metaInfo) {
+	print;
+}
+&print_entity_separator(scalar @pcx_metaInfo);
+
+
+#-----------------------------------------------------
+#	Print action scripts
+#-----------------------------------------------------
+&print_header(scalar (keys %pcx_action_scripts), "Action ", "scripts");
+my %seen = ();
+foreach my $kind (keys %pcx_action_scripts) {
+	foreach my $category (keys %{$pcx_action_scripts{$kind}}) {
+		print "### $category $kind\n";
+		foreach my $script (@{$pcx_action_scripts{$kind}->{$category}}) {
+			# Don't print the same script twice.
+			# Note that the array may have duplicated scripts, 
+			#	one for data fork, the other for resource fork.
+			unless (exists $seen{$script}) {
+				print $script, "\n";
+				$seen{$script}++;
+			}
+		}
+		print "\n";
+	}
+}
+
+
+#-----------------------------------------------------
+#	Print the result of action scripts executed in pcx
+#-----------------------------------------------------
+&print_header(scalar (keys %actionScripts), "Action ", "scripts execution result");
+foreach my $script (keys %actionScripts) {
+	print "# $script\n";
+	foreach my $result (@{$actionScripts{$script}}) {
+		print $result, "\n";
+	}
+	print "\n";
+}
+
+
+
+#-----------------------------------------------------
+#	Print unknown messages
+#-----------------------------------------------------
+&print_header(scalar @pcx_unknown, "Unknown ", "messages");
+foreach (@pcx_unknown) {
+	print;
+}
+&print_entity_separator(scalar @pcx_unknown);
+
+
+
+#-----------------------------------------------------
+#	Print Graphic Leverage Scripts.
+#-----------------------------------------------------
+if ($graphicLeverageScript) {
+    &print_header(1, "Graphic Leverage Scripts", "");
+
+    @mustDirectories = (
+                            "OldBaseGraphics",
+                            "NewBaseGraphics",
+                            "OldLocGraphics",
+                            "LocRequired",
+                            "Leveraged",
+                        );
+
+    # Print scripts to define the required directories.
+    foreach (@mustDirectories) {
+        print "set $_=Please_Change_Here_$_", "\n";
+    }
+    print "\n";
+
+    # Print scripts to check to see if the required directories exist.
+    foreach (@mustDirectories) {
+        print "if (! -d \"\$$_\") then", "\n";
+        print "	echo \"\$$_ doesn't exist.\"", "\n";
+        print "	break","\n";
+        print "endif", "\n";
+    }
+    print "\n";
+    
+    # Print scripts to create New and Changed directories in LocRequired.
+    foreach (New, Changed) {
+        print "if (! -d \"\$LocRequired/$_\") then", "\n";
+        print "	mkdir \"\$LocRequired/$_\"","\n";
+        print "endif", "\n";
+    }
+    print "\n";
+    
+    # Print scripts to create New and Changed directories in LocRequired.
+    %scriptsToCategorizeGraphicFiles = ();
+    
+    
+    #-----------------------------------------------------
+    #	Print scripts to copy files
+    #-----------------------------------------------------    
+    foreach $category (sort $ignore_case keys %pcx_summary_file) {
+        # &print_header(1, $category, "data/resource fork files");
+        my ($relativeParentPath, $relativeFilePath);
+		my %printedDirectory;
+		
+        if ($category eq "new") {
+            # Copy new files from NewBaseGraphics to LocRequired/New
+            print "# Copy new files from NewBaseGraphics to LocRequired/New", "\n";
+			%printedDirectory = ();
+            foreach (sort $ignore_case @{$pcx_summary_file{$category}}) {
+                ($relativeParentPath, $relativeFilePath) = getRelativePaths($_);
+				if ($relativeParentPath && !(exists $printedDirectory{$relativeParentPath}))  {
+					print "	mkdir -p \"\$LocRequired/New/\"'$relativeParentPath'", "\n";
+					$printedDirectory{$relativeParentPath}++;
+                }
+				print "	ditto --rsrc	\"\$NewBaseGraphics/\"'$relativeFilePath'	\"\$LocRequired/New/\"'$relativeParentPath'", "\n";
+            }
+        } elsif ($category eq "changed") {
+            # Copy new files from NewBaseGraphics to LocRequired/Changed
+            print "# Copy changed files from NewBaseGraphics to LocRequired/Changed", "\n";
+			%printedDirectory = ();
+            foreach (sort $ignore_case keys %{$pcx_summary_file{$category}}) {
+                if (m/ <-\/\/-> /) {
+                    # Source and Target file names differ.
+                    ($sf, $tf) = split/ <-\/\/-> /;
+					($relativeParentPath, $relativeFilePath) = getRelativePaths($tf);
+				} else {
+					($relativeParentPath, $relativeFilePath) = getRelativePaths($pcx_map_file_source_target{$_});
+				}
+				if ($relativeParentPath && !(exists $printedDirectory{$relativeParentPath}))  {
+					print "	mkdir -p \"\$LocRequired/Changed/\"'$relativeParentPath'", "\n";
+					$printedDirectory{$relativeParentPath}++;
+				}
+				print "	ditto --rsrc	\"\$NewBaseGraphics/\"'$relativeFilePath'	\"\$LocRequired/Changed/\"'$relativeParentPath'", "\n";
+            }
+        } elsif ($category eq "identical") {
+            # Copy new files from OldLocGraphics to Leveraged
+            print "# Copy identical files from OldLocGraphics to Leveraged", "\n";
+			%printedDirectory = ();
+            foreach (sort $ignore_case keys %{$pcx_summary_file{$category}}) {
+                if (m/ <-\/\/-> /) {
+                    # Source and Target file names differ.
+                    ($sf, $tf) = split/ <-\/\/-> /;
+                    my ($relativeSourceFilePath, $relativeTargetFilePath);
+					# source
+					($relativeParentPath, $relativeSourceFilePath) = getRelativePaths($sf, 'source');
+					# target
+					($relativeParentPath, $relativeTargetFilePath) = getRelativePaths($tf);
+					if ($relativeParentPath && !(exists $printedDirectory{$relativeParentPath}))  {
+						print "	mkdir -p \"\$Leveraged/\"'$relativeParentPath'", "\n";
+						$printedDirectory{$relativeParentPath}++;
+					}
+					print "	ditto --rsrc	\"\$OldLocGraphics/\"'$relativeSourceFilePath'	\"\$Leveraged/\"'$relativeTargetFilePath'", "\n";
+                } else {
+					($relativeParentPath, $relativeFilePath) = getRelativePaths($pcx_map_file_source_target{$_});
+					if ($relativeParentPath && !(exists $printedDirectory{$relativeParentPath}))  {
+						print "	mkdir -p \"\$Leveraged/\"'$relativeParentPath'", "\n";
+						$printedDirectory{$relativeParentPath}++;
+					}
+                    print "	ditto --rsrc	\"\$OldLocGraphics/\"'$relativeFilePath'	\"\$Leveraged/\"'$relativeParentPath'", "\n";
+                }
+            }
+        }
+    }    
+}
+
+
+#---------------------------------------------------------------------
+#	Create *.(nib|xib).iblockingrules files for changed nibs/xibs
+#   <rdar://problem/5394188> Need to integrate flidentifier output with new localization loc mode
+#---------------------------------------------------------------------
+if ($iblockingrules) {
+    foreach ( sort name_order @pcx_details ) {
+        if ($_) {
+            if ( $_->entityType() eq 'nib' ) {
+                $_->createIblockingrulesFile();
+            }
+        }
+    }
+}
+
+
+#---------------------------------------------------------------------
+#	Set Finder label to changed files
+#---------------------------------------------------------------------
+# None Red Orange Yellow Green Blue Purple Gray
+if ($setLabelForFocusedLoc || $colorLabel) {
+	my %labelColor =   (
+						"None" => 0,
+						"Orange" => 1,
+						"Red" => 2,
+						"Yellow" => 3,
+						"Blue" => 4,
+						"Purple" => 5,
+						"Green" => 6,
+						"Gray" => 7,
+					);
+
+	&setlabelToGivenCategory(\@gNewFilesNibs, $labelColor{"Red"}, "new", "files/nibs", "Red");
+	&setlabelToGivenCategory(\@gChangedFilesNibs, $labelColor{"Yellow"}, "changed", "files/nibs", "Yellow");
+
+	# set a label to the parent directory of new/changed file/nib/directories (rdar://problem/3847536)
+	my @directoriesRequiringLoc = ();
+	&obtainLocRequiredDirs(\@directoriesRequiringLoc, \@gNewFilesNibs, \@gChangedFilesNibs);
+	&setlabelToGivenCategory(\@directoriesRequiringLoc, $labelColor{"Orange"}, "new or changed", "directories", "Orange");
+
+
+	#---------------------------------------------------------------------------------------------------------
+	#	Print a URL for the parent directory to let a localizer easily access the files they should focus on.
+	#---------------------------------------------------------------------------------------------------------
+	&print_header(scalar @gNewFilesNibs + scalar @gChangedFilesNibs, "You should focus on the files", "in the following directories.");
+
+	my %parentDirs = ();
+	foreach (@gNewFilesNibs, @gChangedFilesNibs) {
+		s/^(.+)\/(.+)$/\1/; # Figure out the parent directory
+		$parentDirs{$_}++;
+	}
+
+	foreach (sort $ignore_case keys %parentDirs) {
+		if ($needToFixURL) { $fixedURL = &fixURL($_); } else { $fixedURL = $_};
+		print $openCommand, $quoteForURL_open, "file://localhost", $fixedURL, $quoteForURL_close, "\n";
+	}
+}
+
+
+#************************************
+# Exit;
+#************************************
+exit (0);
+
+
+
+
+
+#*****************************************************************************************
+#   Obtain all directories in _NewLoc which have localized items in it.
+#
+#
+#*****************************************************************************************
+sub obtainLocRequiredDirs
+{
+	my ($locRequiredDirsRef, $newFilesRef, $changedFilesRef) = @_;
+	my %tempDirs = ();
+
+	foreach my $fileOrDirectory (@{$newFilesRef}, @{$changedFilesRef}) {
+		next unless (-e $fileOrDirectory);
+
+		my @dirs = split (/\//, $fileOrDirectory);
+		if ((-f $fileOrDirectory) || ($fileOrDirectory =~ m/.nib$/)) {
+			pop @dirs;
+		}
+		
+		my $dir = undef;
+		if ($fileOrDirectory =~ m/^\//) {
+			$dir = "/";
+		} else {
+			$dir = "";
+		}
+		foreach my $pathComponent (@dirs) {
+			unless ($dir =~ m/\/$/) {
+				$dir .= "/";
+			}
+			$dir .= $pathComponent;
+			$tempDirs{$dir}++;
+		}
+	}
+
+	# This is to prevent to label upper level directories such as hard disk volume itself beyond AppleGlot environment.
+	foreach my $dir (sort keys %tempDirs) {
+		next unless ($dir =~ m/_NewLoc/);
+		next if ($dir =~ m/.nib$/);
+		push (@{$locRequiredDirsRef}, $dir);
+	}
+
+}
+
+
+
+#*****************************************************************************************
+#   Set a label to the files, nibs and directories for the given category
+#    Input: 
+#		A reference to an array containing the target files.
+#		A label color.
+#		A category.
+#
+#
+#*****************************************************************************************
+sub setlabelToGivenCategory
+{
+	my ($filesRef, $color, $category, $entityType, $colorName) = @_;
+	my @purifiedNewOrChangedFilesNibs = ();
+
+	&print_header(scalar @{$filesRef}, "Setting Finder label to $category $entityType.", "Please check any error message.");
+	
+	# Eliminate a file/nib which doesn't exsit.
+	foreach (@{$filesRef}) {
+		if (-e $_) {
+			push (@purifiedNewOrChangedFilesNibs, $_);
+		} else {
+			print "### Error:$_ doesn't exist.\n";
+		}
+	}
+	
+	# Set label
+	&setlabel(\@purifiedNewOrChangedFilesNibs, $color, $colorName);
+		 
+}
+
+
+#*****************************************************************************************
+#   Set a label to the specified files
+#    Input: 
+#		A reference to an array containing the target files.
+#		A label color.
+#
+#	There is a problem that labeling fails if a file name contains TM character (#3763461).
+# 		You must convert a file path in utf8 into a file path in Mac OS 9 native enncoding.
+#		TM is represented in e284a2 (utf8) and fe (Mac OS Japanese).
+#		Here is the workaround for Japanese
+#			$script =~ s/\xe2\x84\xa2/\xfe/g;
+#		However representation of TM character in Mac OS 9 native enncoding differs 
+#			language by languate. 
+#		Need to figure out the solution.
+#
+#
+#*****************************************************************************************
+sub setlabel
+{
+	my ($filesRef, $color, $colorName) = @_;
+
+	if ($setFinderLabelPath eq "") { 
+		# If setFinderLabel doesn't exist, use AppleScript to set a label.
+
+		my $script = "";
+		$script .= 'tell application "Finder"' . "\n";
+		$script .= 'activate' . "\n";
+		$script .= "\t" . "set f to {\"Unable to set the Finder label to the following files:\", \"\\n\"}" . "\n";
+
+		foreach (sort @{$filesRef}) {
+			my $fixedPath = $_;
+			$fixedPath =~ s/\\/\\\\/g;	# Escape-1 This escape must be done prior to Escape-2.
+			$fixedPath =~ s/"/\\"/g;	# Escape-2 
+			my $fixedPath = '"' . $fixedPath . '"';
+			$script .= "\t" . "try" . "\n";
+			$script .= "\t\t" . "set targetFile to alias Posix file $fixedPath" . "\n";
+			$script .= "\t\t" . "set label index of targetFile to $color" . "\n";
+			$script .= "\t" . "on error" . "\n";
+			$script .= "\t\t" . "set end of f to $fixedPath" . "\n";
+			$script .= "\t\t" . "set end of f to \"\\n\"" . "\n";
+			$script .= "\t" . "end try" . "\n";
+		}
+		
+		$script .= "\t" . "if (length of f) >  2 then" . "\n";
+		$script .= "\t\t" . "error f" . "\n";
+		$script .= "\t" . "end if" . "\n";
+
+		$script .= 'end tell' . "\n";
+		# debug
+		# print $script;
+		
+		open AS, "| osascript -s o";
+		print AS $script;
+		close AS;
+	} else {
+		# If setFinderLabel does exists, use setFinderLabel tool to set a label.		
+		
+		# Obsolete logic. Calling setFinderLabel for each file is very expensive.
+		# foreach (sort @{$filesRef}) {
+		#	my $fixedPath = $_;
+		#	$fixedPath =~ s/\\/\\\\/g;	# Escape-1 This escape must be done prior to Escape-2.
+		#	$fixedPath =~ s/"/\\"/g;	# Escape-2 
+		#	my $setFinderLabelOut = `"$setFinderLabelPath" -f $color "$fixedPath"`;
+		#	if ($setFinderLabelOut =~ m/\S+/s) {
+		#		print $setFinderLabelOut;
+		#	}
+		# }
+		
+		# New logic.
+		# Get a temp file path
+		my $tempFilePath = "/tmp/fpcx_" . $$ . "_color_labels.plist";
+		
+		# Create a NSDictionary object which contains a file path as a key and a color label as a value.
+		# Please see the following page for more details about PerlObjCBridge.
+		# http://developer.apple.com/documentation/Darwin/Reference/ManPages/man3/PerlObjCBridge.3pm.html
+		# Don't forget to define "use Foundation;"
+		my $dict = NSMutableDictionary->dictionary();
+		foreach (sort @{$filesRef}) {
+			$dict->setObject_forKey_($colorName, $_);
+		}
+
+		# Write the dictionary contents in the temp file (.plist).
+		$dict->writeToFile_atomically_($tempFilePath, 1);
+
+		# Call setFinderLabel tool
+		my $setFinderLabelOut = "";
+		unless ($noLabelUpdateEvent) {		
+			$setFinderLabelOut = `"$setFinderLabelPath" -f -i "$tempFilePath"`;
+		} else {
+			# Pass -n option not to send a update Finder event.
+			# This is to run flidentifier in build system (xbs).
+			# Please see #4709680 for details.
+			$setFinderLabelOut = `"$setFinderLabelPath" -n -f -i "$tempFilePath"`;
+		}
+		
+		if ($setFinderLabelOut =~ m/\S+/s) {
+				print $setFinderLabelOut;
+		}
+			
+		# Delete the temp file
+		if (-e $tempFilePath) {
+			unlink $tempFilePath;
+		}
+	}
+	
+	return;
+}
+
+
+#---------------------------------------------------------------------------------------------------------
+#   Convert a unix path into a path used for AppleScript
+#		Note: Input must be a full path
+# 
+#		You had better use "POSIX file" in your script 
+#			but osascript can't carry out path conversion from Unix path to Mac path with "POSIX file"
+#---------------------------------------------------------------------------------------------------------
+sub convertPath_unix2applescript
+{
+	my ($unixPath) = @_;
+	my $applescriptPath = $unixPath;
+	my $prefix = "";
+	my $escapeString = "__colon_converted_by_convertPath_unix2applescript__";
+	
+	# Strip out leading "/" or "/Volumes/"
+	if ($unixPath =~ m/^\/Volumes\//) {
+		# Non-boot volume
+		$applescriptPath =~ s/^\/Volumes\///;
+	} elsif ($unixPath =~ m/^\//) {
+		# Boot volume
+		$applescriptPath =~ s/^\///;
+		$prefix = ":";
+	} else {
+		# Internal error.
+		return $applescriptPath;
+	}
+
+	# Replace colons with special string paterns (Escape)
+	# If a user type a slash ("/") in Finder's file/folder name, it will be stored as a colon (":") internally.
+	$applescriptPath =~ s/:/$escapeString/g;
+
+	# Replace slashes ("/") with colons (":")
+	$applescriptPath =~ s/\//:/g;
+	
+	# Escape double quote characters
+	$applescriptPath =~ s/"/\\"/g;
+
+	# Replacespecial string paterns with alashes, not colons (Unescape)
+	$applescriptPath =~ s/$escapeString/\//g;
+	
+	return '"' . $prefix . $applescriptPath . '"';
+	
+}
+
+
+sub escapeForShell
+{
+    my ($string) = @_;
+    $string =~ s/\x27/\x27\x22\x27\x22\x27/g;	#\x22 = double quote ("), \x27 = single quote (')
+    return $string;
+}
+
+
+sub name_order
+{
+	return ($a->_source . $a->_target) cmp ($b->_source . $b->_target);
+}
+
+
+
+sub print_header
+{	
+	my ($count, $category, $entity) = @_;
+	
+	if ($count) {
+		print "#", "*" x 80, "\n";
+		print "# ", ucfirst $category, " ", $entity, "\n";
+		print "#", "*" x 80, "\n";
+	}
+}
+
+
+sub print_entity_separator
+{	
+	my $count = shift;
+	if ($count) {
+		print "\n\n";
+	}
+}
+
+
+sub print_category_separator
+{	
+	print "\n";
+}
+
+
+#----------------------------------------------------------------------------------
+#   Parse a file path and return relative parent path and relative file path 
+#
+#----------------------------------------------------------------------------------
+sub getRelativePaths {
+	my ($path, $sourceOrTarget) = @_;
+	if (exists $pcx_arguments{sh} && ($pcx_arguments{sh} == 1)) {
+		# short header
+		# eliminate unnecessary './', path example is ./path/to/the/file
+		$path =~ s|^\./(.+)$|\1|;	
+	} else {
+		# eliminate the parent directory in the full path
+		if (defined $sourceOrTarget && ($sourceOrTarget eq 'source')) {
+			$path =~ s/$pcx_arguments{source}(.+)$/\1/;	
+		} else {
+			$path =~ s/$pcx_arguments{target}(.+)$/\1/;	
+		}
+		$path =~ s|^/(.+)$|\1|;	
+	}
+	
+	my @paths = split /\//, $path;
+
+	my $file = join '/', @paths;
+	$file = escapeForShell($file);
+
+	pop @paths;
+	my $parent;
+	if (@paths > 0) {
+		$parent = join '/', @paths;
+		$parent = escapeForShell($parent);
+	} else {
+		$parent = "";
+	}
+		
+	return ($parent, $file);
+}
+
+
+
+#####################################################################################################
+#
+#    Generate Find String report 
+#      
+#    Created by kenji on Thu May 31 2001.
+#    Copyright (c) 2001 Apple Computer Inc. All rights reserved.
+#####################################################################################################
+sub find_filter
+{
+ 
+        %findResult = ();
+
+          while (<>) {
+        next unless (m/^# \[pcx:[fe]:/);
+        
+		if (m/^# \[pcx:f:(.+):\/\/->(.*)<-\/\/:\] (.*)$/) {
+            $entity = $1;
+            $file = $2;
+            $result = $3;
+            
+            @findKeyStringKeyStringValue = split(/ \\ ===> \\ /, $result);
+            if (@findKeyStringKeyStringValue == 2) {
+                $findKey = $findKeyStringKeyStringValue[0];
+                $foundString = $findKeyStringKeyStringValue[1];
+            } elsif (@findKeyStringKeyStringValue == 3) {
+                $findKey = $findKeyStringKeyStringValue[0];
+                $foundString = $findKeyStringKeyStringValue[1] . " \\ ===> \\ " . $findKeyStringKeyStringValue[2];
+            } else {
+                print "### fpcx Error: Can not parse:$_";
+            }
+            
+            push (@{$findResult{$findKey}->{$file}->{$entity}}, $foundString);
+            
+		} elsif (m/^# \[pcx:e:/) {
+		
+            print "### Error:\n\t$_";
+			
+		} else {
+        
+            print "### fpcx Error: Can not parse:$_";
+        }
+        
+    }
+    
+    
+    foreach $specifiedString (sort keys %findResult) {
+        print "Search String = ", $specifiedString, "\n";
+       
+        foreach $file (sort keys %{$findResult{$specifiedString}}) {
+            print " " x 2, $file, "\n";
+            
+            foreach $entity (sort keys %{$findResult{$specifiedString}->{$file}}) {
+                # print "\t\t", $entity, "\n";
+                
+                foreach $foundString (sort @{$findResult{$specifiedString}->{$file}->{$entity}}) {
+                
+                    @stringKeyAndValue = split(/ \\ ===> \\ /, $foundString);
+                    if (@stringKeyAndValue == 2) {
+                        print " " x 4, "Key  :", $stringKeyAndValue[0], "\n";
+                        print " " x 4, "Value:", $stringKeyAndValue[1], "\n";
+                    } else {
+                        print " " x 4, $foundString, "\n";
+                    }
+                }
+            }
+            print "\n";
+        }
+    }
+
+}
+
+

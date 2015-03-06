@@ -1,0 +1,282 @@
+#!/usr/bin/perl
+
+
+# The outer "while" loop echos the input to the output while we are processing it.
+# Since "print" is the last statement we will only pass on input which we have
+# successfully finished processing.
+
+BEGIN {
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+	
+};
+
+
+use strict;
+use POSIX qw(tmpnam);
+use Getopt::Long;
+
+my ($scriptName);
+
+use lib `which $0` =~ m#^(.*)/[^/]+$#;
+($scriptName = $0) =~ s|(.+)/([^/]+)$|$2|;
+
+undef $/;
+
+my ($source, $output, $language, $tempFile_src, $tempFile, $tempFile2, $output2);
+
+&usage() unless @ARGV and GetOptions(
+        'src=s'       	   => \$source,
+        'dest=s'  	 	   => \$output,
+        'lang=s'		   => \$language,
+	);
+
+$tempFile_src	= tmpnam();
+$tempFile	= tmpnam();
+$tempFile2	= tmpnam();
+
+# now we convert them to the proper encoding...
+
+my ($fromConv, $toConv, $result);
+my %encoding = (
+	"ja"	=> "CP932",
+	"ko"	=> "CP949",
+	"zh_CN"	=> "CP936",
+	"zh_TW"	=> "CP950",
+	"pl"    => "CP1250",
+	"ru"    => "CP1251",
+);
+
+$fromConv	= "CP1252";
+$toConv		= "UTF-8";
+
+$fromConv = $encoding{$language} if ($encoding{$language});
+
+$result = `iconv -c -f $fromConv -t $toConv $source > $tempFile_src`;
+print "Result of iconv: $result\n" if ($result);
+
+open (FILE, "< $tempFile_src") or die "can't open $tempFile_src for input.\n";
+my $xml = <FILE>; # copy whole line 
+close (FILE);
+
+# open (TEMPFILE, ">$tempFile") || die "Can't open $tempFile for tempfile output.\n";
+# open (TEMPFILE2, ">$tempFile2") || die "Can't open $tempFile2 for tempfile output.\n";
+open (TEMPFILE, ">$output.wg") || die "Can't open $output.wg for wg output.\n";
+open (TEMPFILE2, "> $output.ad") || die "Can't open $output.ad for ad output.\n";
+
+$xml =~ s/\x0d\x0a/\x0a/sg; # DOS -> Unix line end
+
+$/ = "**";
+
+my (%hashTrans, %hashNoTrans, $key, @value);
+
+while ($xml =~ m/
+		\n<CATEGORY>(.*?)
+		\n<PLATFORM>(.*?)
+		\n<CONTEXT>(.*?)
+		\n<ENGLISH>(.*?)
+		\n<REFERENCE>(.*?)
+		\n<(\S*?)>(.*?)
+		\n<REFERENCE>(.*?)
+ 	/xgs) 
+
+{
+	# store these in a hash table so we have blocks of stuff by file, which we think wg requires.
+	# handlechar ensures there is no forbidden character in the final xml output
+	@value = (&handlechar($1),&handlechar($2),&handlechar($3),&handlechar($4),&handlechar($6),&handlechar($7));
+
+	# if english matches translation, it goes in the wg, otherwise to the ad.
+	
+	if ($4 eq $7) {
+		push(@{$hashNoTrans{$5}}, @value);
+	} else {
+		push(@{$hashTrans{$5}}, @value);
+	}
+	
+
+}
+
+# next we go through the hash table and print out the required format for wg/ad.
+
+my ($z, $y, @dates, $cat, $plat, $context, $english, $transLang, $transText, $trans);
+
+
+# first file headers
+
+print  TEMPFILE "<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>\n";
+@dates = localtime( time() );
+printf TEMPFILE ( "<!-- Created by insight2wg at %02d/%02d/%04d %02d:%02d:%02d                           -->\n",
+	 $dates[4] + 1, $dates[3], $dates[5] + 1900, $dates[2], $dates[1], $dates[0] );
+print  TEMPFILE "<!-- ". "="x70 . " -->\n";
+
+print  TEMPFILE "<Proj>\n";
+print  TEMPFILE "<ProjName>Project Name<\/ProjName>\n";
+print  TEMPFILE "<ProjVersion>Project Version<\/ProjVersion>\n\n";
+
+
+# populate wg 
+
+foreach $z (keys %hashNoTrans) {
+	
+	print  TEMPFILE "<!-- ". "="x70 . " -->\n";
+	print  TEMPFILE "<!-- ". " "x70 . " -->\n";
+	printf TEMPFILE ( "<!--    %-64s    -->\n", $z );
+	print  TEMPFILE "<!-- ". " "x70 . " -->\n";
+	print  TEMPFILE "<!-- ". "="x70 . " -->\n";
+	print  TEMPFILE "<File>\n";
+	print  TEMPFILE "<Filepath>$z<\/Filepath>\n\n";
+
+	my $numOfEntries = scalar(@{$hashNoTrans{$z}})/6;
+	for (my $count = 0; $count < $numOfEntries; $count++) {
+
+		($cat, $plat, $context, $english, $transLang, $transText) = @{$hashNoTrans{$z}}[6*$count..(6*$count+5)];
+		
+		$trans = langCodeFromISText($transLang);
+		
+		print  TEMPFILE "<TextItem>\n";
+		print  TEMPFILE "<Description>$context<\/Description>\n";
+		print  TEMPFILE "<Position>$cat $plat<\/Position>\n";
+		print  TEMPFILE "<TranslationSet>\n\n";
+		print  TEMPFILE ("\t<base loc=\"en\"            >$english<\/base>\n");
+		print  TEMPFILE ("\t<tran loc=\"$trans\" origin=\"\">$transText<\/tran>\n\n");
+		print  TEMPFILE "<\/TranslationSet>\n";
+		print  TEMPFILE "<\/TextItem>\n\n";
+	}
+	
+	print TEMPFILE "</File>\n\n";
+	
+}
+
+
+# second file headers (ad)
+
+print  TEMPFILE2 "<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>\n";
+@dates = localtime( time() );
+printf TEMPFILE2 ( "<!-- Created by insight2wg at %02d/%02d/%04d %02d:%02d:%02d                           -->\n",
+	 $dates[4] + 1, $dates[3], $dates[5] + 1900, $dates[2], $dates[1], $dates[0] );
+print  TEMPFILE2 "<!-- ". "="x70 . " -->\n";
+
+print  TEMPFILE2 "<Proj>\n";
+print  TEMPFILE2 "<ProjName>Project Name<\/ProjName>\n";
+print  TEMPFILE2 "<ProjVersion>Project Version<\/ProjVersion>\n\n";
+
+
+
+
+foreach $z (keys %hashTrans) {
+	
+	print  TEMPFILE2 "<!-- ". "="x70 . " -->\n";
+	print  TEMPFILE2 "<!-- ". " "x70 . " -->\n";
+	printf TEMPFILE2 ( "<!--    %-64s    -->\n", $z );
+	print  TEMPFILE2 "<!-- ". " "x70 . " -->\n";
+	print  TEMPFILE2 "<!-- ". "="x70 . " -->\n";
+	print  TEMPFILE2 "<File>\n";
+	print  TEMPFILE2 "<Filepath>$z<\/Filepath>\n\n";
+
+	my $numOfEntries = scalar(@{$hashTrans{$z}})/6;
+	for (my $count = 0; $count < $numOfEntries; $count++) {
+
+		($cat, $plat, $context, $english, $transLang, $transText) = @{$hashTrans{$z}}[6*$count..(6*$count+5)];
+		
+		$trans = langCodeFromISText($transLang);
+		
+		print  TEMPFILE2 "<TextItem>\n";
+		print  TEMPFILE2 "<Description>$context<\/Description>\n";
+		print  TEMPFILE2 "<Position>$cat $plat<\/Position>\n";
+		print  TEMPFILE2 "<TranslationSet>\n\n";
+		print  TEMPFILE2 ("\t<base loc=\"en\"            >$english<\/base>\n");
+		print  TEMPFILE2 ("\t<tran loc=\"$trans\" origin=\"\">$transText<\/tran>\n\n");
+		print  TEMPFILE2 "<\/TranslationSet>\n";
+		print  TEMPFILE2 "<\/TextItem>\n\n";
+	}
+	
+	print TEMPFILE2 "</File>\n\n";
+	
+}
+
+# file tags for both, then close 'em
+
+print TEMPFILE "</Proj>\n\n";
+print TEMPFILE2 "</Proj>\n\n";
+close (TEMPFILE);
+close (TEMPFILE2);
+
+exit (0);
+
+# $result = `iconv -c -f $fromConv -t $toConv $tempFile > $output.wg`;
+# print "Result: $result\n" if ($result);
+# 
+# $result = `iconv -c -f $fromConv -t $toConv $tempFile2 > $output.ad`;
+# print "Result: $result\n" if ($result);
+
+
+sub usage {
+    print "@_\n" if @_;
+	print "\ninsight2wg usage:\n";
+	print "\ninsight2wg -src <insight glossary> -dest <filename with NO suffix>\n";
+	print " [ -lang <language code> (only needed for two-byte langs)]\n\n";
+	print " NOTE: the two files will have .ad and .wg added automatically.\n\n";
+	exit 1;	
+}
+
+sub langCodeFromISText {
+		
+	my ($input, %table);	
+	($input) = @_;
+	
+	%table = (
+		"DUTCH" => "nl",
+		"FRENCH" => "fr",
+		"GERMAN" => "de",
+		"ITALIAN" => "it",
+		"JAPANESE" => "ja",
+		"SPANISH" => "es",
+		"DANISH" => "da",
+		"FINNISH" => "fi",
+		"NORWEGIAN" => "no",
+		"SWEDISH" => "sv",
+		"PORTUGUESE" => "pt",
+		"KOREAN" => "ko",
+		"POLISH" => "pl",
+		"PORTUGUESE" => "pt_PT",
+		"RUSSIAN" => "ru",
+	);
+	
+	#for CHINESE, which doesn't differentiate, we use the -lang code
+	
+	if ($input eq "CHINESE") {
+		return $language;
+	}
+
+	return $table{$input};
+}
+
+# Replaces all characters that cannot be used in the .ad files
+# by their counterparts
+sub handlechar {
+    $_ = $_[0];
+ 	s/&/&amp;/g ;
+    s/'/&apos;/g ;
+    s/"/&quot;/g ;
+    s/</&lt;/g ;
+    s/>/&gt;/g ;
+    return $_ ;
+}

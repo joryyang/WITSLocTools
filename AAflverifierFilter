@@ -1,0 +1,1118 @@
+#! /usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAflverifierFilter
+##        Author:	Stanley Au-Yeung
+##          Date:	Friday, Jan 5, 2007.
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	09/01/08	10:00	SA		version 1.2.1
+##	09/01/08	10:00	SA		Added -glot
+##	05/10/08	12:00	SA		version 1.2
+##	05/10/08	12:00	SA		Uses AALoc Libs
+##	05/05/08	12:30	SA		version 1.1
+##	05/05/08	12:30	SA		Support MacSWPDSLocEnv LocEnv
+##	01/03/08	23:00	SA		version 1.0.9
+##	01/03/08	23:00	SA		Support other LocEnvs
+##	08/27/07	22:00	SA		version 1.0.8
+##	08/27/07	16:00	SA		Filter more nib attributes if OB/NB == NL
+##								hiliteStyle, justification, intercellSpacing, frameSize, singleLine, controlSignature
+##	08/16/07	22:00	SA		version 1.0.7
+##	08/16/07	22:00	SA		Filter more nib attributes if OB/NB == NL
+##								screenRect, cellSize, frameOrigin, frame, imagePosition
+##	08/16/07	22:00	SA		Fixed a bug of getting OB/NB?OL/NL strings in \txxx, xxx format
+##	08/12/07	18:00	SA		version 1.0.6
+##	08/12/07	18:00	SA		Put AACommand for those strings reverted back to English
+##	07/28/07	18:00	SA		version 1.0.5
+##	07/28/07	18:00	SA		Filter alignment if NewLoc equal to NewBase
+##								Filter bezelStyle if NewLoc equal to NewBase
+##								Filter gButtonBehavior if NewLoc equal to NewBase
+##								Filter bordered if NewLoc equal to NewBase
+##								Filter state if NewLoc equal to NewBase
+##								Filter tag if NewLoc equal to NewBase
+##								Filter widgetType if NewLoc equal to NewBase
+##	03/10/07	21:00	SA		version 1.0.4
+##	03/10/07	21:00	SA		Fixed a bug of no TranslationKitSubmit_receiveTranslationKitLog
+##	03/10/07	21:00	SA		Fixed a bug of no _Logs/AutoLayout_Log/ in AG env
+##	02/14/07	23:00	SA		version 1.0.3
+##	02/14/07	23:00	SA		Don't filter tiff file not inside .nib
+##	02/12/07	01:00	SA		version 1.0.2
+##	02/12/07	01:00	SA		Filter tiff file inside .nib
+##	02/10/07	12:00	SA		Read ALA changes from AppleGlot env
+##	02/04/07	01:00	SA		version 1.0.1
+##	02/03/07	12:00	SA		Read ALA changes from alaChangesLog
+##	01/05/07	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#=============================================================================================
+#	Modules Used
+#=============================================================================================
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use Getopt::Long;
+use File::Basename;
+
+use AALocUtilities;
+use AALocFileUtilities;
+use AALocEnvUtilities;
+
+
+#---------------------------------------------------------------------------------------------
+#  Get arguments
+#---------------------------------------------------------------------------------------------
+
+$version = "1.2.1";
+
+my $gDebug = 0;
+my $gLocEnv = "";
+my $gAppleGlotEnvPath = "";
+my $h;
+my $v;
+my $getVersion;
+my @gADChanges = ();
+my @gALAChanges = ();
+
+
+&usage()
+    unless @ARGV and GetOptions(
+    'locenv=s'                  => \$gLocEnv,
+	'glot=s'					=> \$gAppleGlotEnvPath,
+    'h'                         => \$h,
+    'v'                         => \$v,
+    'debug'                     => \$gDebug,
+    'getVersion'                => \$getVersion,
+    );
+
+
+if ($h)
+{
+	&usage();
+}
+elsif ($v)
+{
+	print "Version $version\n";
+}
+elsif ($getVersion)
+{
+	print "$version";
+}
+elsif (-d $gLocEnv)
+{
+	my $numberOfLines;
+	my $index;
+	my $line;
+
+	if (($gAppleGlotEnvPath ne "") && (-d $gAppleGlotEnvPath))
+	{
+		$gAppleGlotEnvPath = $gAppleGlotEnvPath;
+	}
+	else
+	{
+		$gAppleGlotEnvPath = AALocEnvUtilities::GetAppleGlotEnvPathFromLocEnv($gLocEnv);
+	}
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#========================================================================================\n");
+	AALocUtilities::PrintLog("# Filter flverifier report\n");
+	AALocUtilities::PrintLog("#========================================================================================\n");
+
+	#---------------------------------------------------------------------------------------------
+	#  
+	#---------------------------------------------------------------------------------------------
+
+	ReadALAChanges();
+	
+	ReadADChanges();
+	
+
+	#---------------------------------------------------------------------------------------------
+	#  
+	#---------------------------------------------------------------------------------------------
+
+	my $appleGlotEnvBaseName = AALocFileUtilities::GetDirectoryBaseName($gAppleGlotEnvPath);
+	my $flVerifierReportFileName = $appleGlotEnvBaseName . "_flverifierReport.txt";
+	my $flVerifierFilteredReportFileName = $appleGlotEnvBaseName . "_flverifierFilteredReport.txt";
+	my $flVerifierReportFilePath = $gAppleGlotEnvPath . "_Logs/" . $flVerifierReportFileName;
+	my $flVerifierFilteredReportFilePath = $gAppleGlotEnvPath . "_Logs/" . $flVerifierFilteredReportFileName;
+		
+	
+	if (!(-e "$flVerifierReportFilePath"))
+	{
+		print "\n### ERROR: Cannot find flverifier report: $flVerifierReportFilePath.\n";
+		return;
+	}
+	
+	if (-e $flVerifierFilteredReportFilePath)
+	{
+		system "rm $flVerifierFilteredReportFilePath";
+	}
+	
+	
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Filtering flverifier report\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	open(FILECONTENT, "<$flVerifierReportFilePath") or die "Cannot open '$flVerifierReportFilePath': $!";
+		@fileContent = <FILECONTENT>;
+	close(FILECONTENT);
+
+	$numberOfLines = @fileContent;
+
+	open filteredReportFile, "> $flVerifierFilteredReportFilePath" or die "Failed to open $flVerifierFilteredReportFilePath\n";
+	
+	my $currentComponent = "";
+	my $currentFile = "";
+	my $currentFilePath = "";
+	my $checkingUSdidnotChangeButLocChanged = 0;
+	my $nubmerOfErrorOfThisFile = 0;
+	my $numberOfErrorLines = 0;
+	my @errors;
+
+
+	for ($index = 0; $index < $numberOfLines; $index++)
+	{
+		$line = $fileContent[$index];
+		
+		if ($checkingUSdidnotChangeButLocChanged)
+		{
+			## data.dependency
+			
+			## tiff file inside .nib
+			if ($line =~ m/^(.*)\.nib\/(.*)\.tiff/)
+			{
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [*.nib/*.tiff] $line" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				$index += 4;
+				
+				next;
+			}
+			
+			## ./*.tiff
+			elsif ($line =~ m/^\.\/(.*)\.tiff/)
+			{
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [./*.tiff] $line" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				print filteredReportFile $line;
+
+				$index++;
+				print filteredReportFile $fileContent[$index];
+				$index++;
+				print filteredReportFile $fileContent[$index];
+				$index++;
+				print filteredReportFile $fileContent[$index];
+				$index++;
+				print filteredReportFile $fileContent[$index];
+				
+				next;
+			}
+
+			## ./
+			elsif ($line =~ m/^\.\//)
+			{
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [./] $line" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				$index += 4;
+				
+				next;
+			}
+			
+			
+			## \t"Key" .strings
+			elsif ($line =~ m/^\t"(.*)"/)
+			{
+				$numberOfErrorLines = 0;
+	
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [\\t\"$1\" .strings] $line" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				# \t\tOB/NB:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tOB\/NB:"(.*)"/;
+				
+				$oldBaseNewBaseString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [OB/NB] $oldBaseNewBaseString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				# \t\tOL:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tOL:"(.*)"/;
+				
+				$oldLocString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [OL]    $oldLocString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				# \t\tNL:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tNL:"(.*)"/;
+				
+				$newLocString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [NL]    $newLocString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				
+				
+				if ($newLocString eq $oldBaseNewBaseString && $newLocString ne "Text Cell")
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [Reverted back to English]    $oldBaseNewBaseString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+					
+					print filteredReportFile $errors[0];
+					print filteredReportFile $errors[1];
+					print filteredReportFile $errors[2];
+					print filteredReportFile $errors[3];
+
+					if ($errors[0] =~ m/CFBundleDisplayName/)
+					{
+						print filteredReportFile "AAComment: Please check why reverted back to English. CFBundleDisplayName changes need to confirm with AA\n";
+					}
+					else
+					{
+						print filteredReportFile "AAComment: Please check why reverted back to English\n";
+					}
+				}
+				elsif (InADChanges($currentFilePath, $oldBaseNewBaseString, $oldLocString, $newLocString))
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [In AD Changes]    $oldBaseNewBaseString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+				}
+				else
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [Not In AD Changes]    $oldBaseNewBaseString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+
+					print filteredReportFile $errors[0];
+					print filteredReportFile $errors[1];
+					print filteredReportFile $errors[2];
+					print filteredReportFile $errors[3];
+				}
+				
+				next;
+			}
+			
+			## \txxx, xxx
+			elsif ($line =~ m/^\t(.*), (.*)$/)
+			{
+				$numberOfErrorLines = 0;
+	
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$nibOID = $1;
+				$nibChangeType = $2;
+
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [\\t\"$nibChangeType\" .nib] $line" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+
+				# \t\tOB/NB:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tOB\/NB:(.*)/;
+				
+				$oldBaseNewBaseString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [OB/NB] $oldBaseNewBaseString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				# \t\tOL:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tOL:(.*)/;
+				
+				$oldLocString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [OL]    $oldLocString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+				
+				# \t\tNL:
+				$index++;
+				$line = $fileContent[$index];
+				$errors[$numberOfErrorLines] = $line;
+				$numberOfErrorLines++;
+
+				$line =~ m/^\t\tNL:(.*)/;
+				
+				$newLocString = $1;
+				#--Debug------------------------------------------------------------------------------
+				print STDERR "[Debug:AAflverifierFilter] [NL]    $newLocString\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+
+				if (($nibChangeType eq "alignment"
+					|| $nibChangeType eq "hiliteStyle"
+					|| $nibChangeType eq "justification"
+					|| $nibChangeType eq "bezelStyle"
+					|| $nibChangeType eq "gButtonBehavior"
+					|| $nibChangeType eq "bordered"
+					|| $nibChangeType eq "state"
+					|| $nibChangeType eq "tag"
+					|| $nibChangeType eq "singleLine"
+					|| $nibChangeType eq "controlSignature"
+					|| $nibChangeType eq "widgetType"
+					|| $nibChangeType eq "screenRect"
+					|| $nibChangeType eq "cellSize"
+					|| $nibChangeType eq "frameSize"
+					|| $nibChangeType eq "intercellSpacing"
+					|| $nibChangeType eq "frameOrigin"
+					|| $nibChangeType eq "frame"
+					|| $nibChangeType eq "imagePosition")
+					&& $oldBaseNewBaseString eq $newLocString)
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] $nibChangeType filtered\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+				}
+				elsif ($nibChangeType eq "title" && $oldBaseNewBaseString eq $newLocString && $newLocString ne "Text Cell")
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [title]    $oldBaseNewBaseString eq $newLocString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+
+					print filteredReportFile $errors[0];
+					print filteredReportFile $errors[1];
+					print filteredReportFile $errors[2];
+					print filteredReportFile $errors[3];
+					print filteredReportFile $errors[4];
+					print filteredReportFile $errors[5];
+					print filteredReportFile $errors[6];
+					print filteredReportFile $errors[7];
+					print filteredReportFile "AAComment: Please check why reverted back to English\n";
+				}
+				elsif (InADChanges($currentFilePath, $oldBaseNewBaseString, $oldLocString, $newLocString))
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [In AD Changes Nib]    $oldBaseNewBaseString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+				}
+				elsif (InALAChanges($currentFilePath, $nibOID, $newLocString))
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [In ALA Changes Nib]    $nibOID, $newLocString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+				}
+				else
+				{
+					#--Debug------------------------------------------------------------------------------
+					print STDERR "[Debug:AAflverifierFilter] [Not In AD/ALA Changes Nib]    $oldBaseNewBaseString\n" if ($gDebug);
+					#-------------------------------------------------------------------------------------
+
+					print filteredReportFile $errors[0];
+					print filteredReportFile $errors[1];
+					print filteredReportFile $errors[2];
+					print filteredReportFile $errors[3];
+					print filteredReportFile $errors[4];
+					print filteredReportFile $errors[5];
+					print filteredReportFile $errors[6];
+					print filteredReportFile $errors[7];
+				}
+							
+				next;
+			}
+		}
+		
+		if ($line =~ m/### FocusedLocVerifier PROGRESS: Verifying a component \[(.*)\]: (.*).../)
+		{
+			$currentComponent = $2;
+			$currentFile = "";
+			$currentFilePath = "";
+			print "Filtering component $currentComponent\n";
+			
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+		
+		elsif ($line =~ m/### FocusedLocVerifier PROGRESS: Verifying a file: (.*).../)
+		{
+			print filteredReportFile $line;
+			$currentFile = $1;
+
+			#--Debug------------------------------------------------------------------------------
+			print STDERR "    Filtering file $currentFile\n" if ($gDebug);
+			#-------------------------------------------------------------------------------------
+			
+			
+			$index++;
+			$line = $fileContent[$index];
+			print filteredReportFile $line;
+
+			$currentFilePath = $line;
+			$currentFilePath =~ s|<file://localhost||;
+			$currentFilePath =~ s|$gAppleGlotEnvPath||;
+			$currentFilePath =~ s|/_OldBase/||;
+			$currentFilePath =~ s|>\n||;
+			
+			#--Debug------------------------------------------------------------------------------
+			print STDERR "    Filtering file $currentFilePath\n" if ($gDebug);
+			#-------------------------------------------------------------------------------------
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+
+		elsif ($line =~ m/FocusedLocVerifier Warning: MIssing or Extra item(s) in NL./)
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+
+		elsif ($line =~ m/FocusedLocVerifier WARNING: You added this entity to OldLoc. The entity is now included in NewBase. Please take an appropriate action./)
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+
+		elsif ($line =~ m/FocusedLocVerifier WARNING: You removed this entity from OldLoc. The entity is now removed from NewBase. Please take an appropriate action./)
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+
+		elsif ($line =~ m/FocusedLocVerifier INFO: US changed but Loc did NOT change. Is the change US specific one?/)
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+
+		elsif ($line =~ m/FocusedLocVerifier INFO: US did NOT change but Loc changed. Did you fix a localization bug?/)
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 1;
+		}
+		
+		else
+		{
+			print filteredReportFile $line;
+			
+			$checkingUSdidnotChangeButLocChanged = 0;
+		}
+	}
+	
+	close filteredReportFile;
+}
+
+exit(0);
+
+
+#=============================================================================================
+#
+#=============================================================================================
+
+#---------------------------------------------------------------------------------------------
+#	ReadALAChanges
+#---------------------------------------------------------------------------------------------
+
+sub ReadALAChanges
+{
+	my $alaChangesLogFilePath = $gLocEnv . "_LKCXInfo/alaChangesLog";
+	my $agALAChangesLogFilePath = $gAppleGlotEnvPath . "_Logs/AutoLayout_Log/alaChangesLog";
+
+
+	if (!(-e $alaChangesLogFilePath))
+	{
+		CreateALAChangesLog();
+	}
+	
+	if (!(-e $agALAChangesLogFilePath))
+	{
+		CreateALAChangesFromAppleGlotEnv();
+	}
+	
+	
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Read ALA Changes Log\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	if (-e $agALAChangesLogFilePath)
+	{
+		open(ALACHANGESLOGCONTENT, "<$agALAChangesLogFilePath") or die "Cannot open '$agALAChangesLogFilePath': $!";
+			@alaChangesLocContent = <ALACHANGESLOGCONTENT>;
+		close(ALACHANGESLOGCONTENT);
+
+		foreach $line(@alaChangesLocContent)
+		{
+			$line =~ m/^(.*?)\t(.*?)\t(.*?)$/;
+			
+			push @gALAChanges,	{	"filePath"	=> $1,
+									"oid"		=> $2,
+									"cood"		=> $3,
+								};
+		}
+	}
+
+
+	if (-e $alaChangesLogFilePath)
+	{
+		open(ALACHANGESLOGCONTENT, "<$alaChangesLogFilePath") or die "Cannot open '$alaChangesLogFilePath': $!";
+			@alaChangesLocContent = <ALACHANGESLOGCONTENT>;
+		close(ALACHANGESLOGCONTENT);
+
+		foreach $line(@alaChangesLocContent)
+		{
+			$line =~ m/^(.*?)\t(.*?)\t(.*?)$/;
+			
+			push @gALAChanges,	{	"filePath"	=> $1,
+									"oid"		=> $2,
+									"cood"		=> $3,
+								};
+		}
+	}
+}
+
+
+sub CreateALAChangesLog
+{
+	my $lprojLanguageCode = AALocEnvUtilities::GetLprojLanguageCodeFromLocEnv($gLocEnv);
+	my $alaLogPath = $gLocEnv . "_LKCXInfo/autolayoutadjuster_log/";
+	my $tempFilePath;
+	my @theALAChanges = ();
+
+
+	if (-d $alaLogPath)
+	{
+		AALocUtilities::PrintLog("\n");
+		AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+		AALocUtilities::PrintLog("# Create ALA Changes Log from Loc Env\n");
+		AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+		opendir(directory, $alaLogPath);
+		@searchResult = grep { !/^\./} readdir(directory);
+		closedir(directory);
+
+
+		foreach $file (@searchResult)
+		{
+			$alaLogFilePath = $alaLogPath . $file . "/" . $file . "_log.txt.gz";
+			$tempCompressFilePath = "/tmp/$file" . "_log.txt.gz";
+			$tempFilePath = "/tmp/$file" . "_log.txt";
+		
+			if (-e $alaLogFilePath)
+			{
+				AALocUtilities::PrintLog("Creating $file\n");
+
+				system "cp '$alaLogFilePath' '$tempCompressFilePath'";
+				system "gzip -d '$tempCompressFilePath'";
+			
+				open(FILECONTENT, "<$tempFilePath") or die "Cannot open '$tempFilePath': $!";
+					@fileContent = <FILECONTENT>;
+				close(FILECONTENT);
+		
+				$currentNibFile = "";
+				$currentOID = "";
+				$currentCood = "";
+		
+				foreach $line(@fileContent)
+				{
+					if ($line =~ m/^nib:(.*)_NewLoc\/(.*?)$/)
+					{
+						if ($currentNibFile ne "" && $currentOID ne "")
+						{
+							push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+														"oid"		=> $currentOID,
+														"cood"		=> $currentCood,
+													};
+						}
+						
+						$currentNibFile = $2;
+						$currentNibFile =~ s|$lprojLanguageCode.lproj|English.lproj|;
+
+
+						#--Debug------------------------------------------------------------------------------
+						print STDERR "[Debug:AAflverifierFilter] currentNibFile $nibFile\n" if ($gDebug);
+						#-------------------------------------------------------------------------------------
+					}
+					elsif ($line =~ m/^\t(.*?), (.*?), (.*), (.*), (.*) => \{\{(.*)\}\}, (.*)$/)
+					{
+						$oid = $2;
+						$cood = $6;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood = "{{" . $cood . "}}";
+
+						if ($currentOID eq "")
+						{
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+						elsif ($currentOID eq $oid)
+						{
+							$currentCood = $cood;
+						}
+						elsif ($currentOID ne $oid)
+						{
+							push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+														"oid"		=> $currentOID,
+														"cood"		=> $currentCood,
+													};
+						
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+						else
+						{
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+
+						#--Debug------------------------------------------------------------------------------
+						print STDERR "[Debug:AAflverifierFilter] $oid $cood\n" if ($gDebug);
+						#-------------------------------------------------------------------------------------
+					}
+				}
+			
+				if ($currentNibFile ne "" && $currentOID ne "")
+				{
+					push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+												"oid"		=> $currentOID,
+												"cood"		=> $currentCood,
+											};
+				}
+
+				`rm $tempFilePath` if (-e $tempFilePath);
+			}
+		}
+		
+
+		my $alaChangesLogFilePath = $gLocEnv . "_LKCXInfo/alaChangesLog";
+
+		open alaChangedLogFile, "> $alaChangesLogFilePath" or die "Failed to open $alaChangesLogFilePath\n";
+
+		for ($index = 0; $index < (scalar @theALAChanges); $index++)
+		{
+			my %alaChangesItem = %{$theALAChanges[$index]};
+			
+			print alaChangedLogFile "$alaChangesItem{'filePath'}\t";
+			print alaChangedLogFile "$alaChangesItem{'oid'}\t";
+			print alaChangedLogFile "$alaChangesItem{'cood'}\n";
+			
+			#--Debug--------------------------------------------------------------------------
+			if ($gDebug)
+			{
+				print STDERR "[Debug:AAflverifierFilter] file path: $alaChangesItem{'filePath'}\n";
+				print STDERR "[Debug:AAflverifierFilter] oid:       $alaChangesItem{'oid'}\n";
+				print STDERR "[Debug:AAflverifierFilter] cood:      $alaChangesItem{'cood'}\n";
+			}
+			#-------------------------------------------------------------------------------------
+		}
+
+		close alaChangedLogFile;
+	}
+}
+
+
+sub CreateALAChangesFromAppleGlotEnv
+{
+	my $lprojLanguageCode = AALocEnvUtilities::GetLprojLanguageCodeFromLocEnv($gLocEnv);
+	my $agALALogPath = $gAppleGlotEnvPath . "_Logs/AutoLayout_Log/";
+	my $agALAChangesLogFilePath = $gAppleGlotEnvPath . "_Logs/AutoLayout_Log/alaChangesLog";
+	my $tempFilePath;
+	my @theALAChanges = ();
+
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Create ALA Changes Log from AppleGlot Env\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	if (-d "$agALALogPath")
+	{
+		opendir(directory, $agALALogPath);
+		@searchResult = grep { !/^\./} readdir(directory);
+		closedir(directory);
+
+
+		foreach $file (@searchResult)
+		{
+			$alaLogFilePath = $agALALogPath . $file . "/" . $file . "_log.txt";
+		
+			if (-e $alaLogFilePath)
+			{
+				AALocUtilities::PrintLog("Creating $file\n");
+
+				open(FILECONTENT, "<$alaLogFilePath") or die "Cannot open '$alaLogFilePath': $!";
+					@fileContent = <FILECONTENT>;
+				close(FILECONTENT);
+		
+				$currentNibFile = "";
+				$currentOID = "";
+				$currentCood = "";
+		
+				foreach $line(@fileContent)
+				{
+					if ($line =~ m/^nib:(.*)_NewLoc\/(.*?)$/)
+					{
+						if ($currentNibFile ne "" && $currentOID ne "")
+						{
+							push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+														"oid"		=> $currentOID,
+														"cood"		=> $currentCood,
+													};
+						}
+						
+						$currentNibFile = $2;
+						$currentNibFile =~ s|$lprojLanguageCode.lproj|English.lproj|;
+
+
+						#--Debug------------------------------------------------------------------------------
+						print STDERR "[Debug:AAflverifierFilter] currentNibFile $nibFile\n" if ($gDebug);
+						#-------------------------------------------------------------------------------------
+					}
+					elsif ($line =~ m/^\t(.*?), (.*?), (.*), (.*), (.*) => \{\{(.*)\}\}, (.*)$/)
+					{
+						$oid = $2;
+						$cood = $6;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood =~ s|\*||;
+						$cood = "{{" . $cood . "}}";
+
+						if ($currentOID eq "")
+						{
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+						elsif ($currentOID eq $oid)
+						{
+							$currentCood = $cood;
+						}
+						elsif ($currentOID ne $oid)
+						{
+							push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+														"oid"		=> $currentOID,
+														"cood"		=> $currentCood,
+													};
+						
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+						else
+						{
+							$currentOID = $oid;
+							$currentCood = $cood;
+						}
+
+						#--Debug------------------------------------------------------------------------------
+						print STDERR "[Debug:AAflverifierFilter] $oid $cood\n" if ($gDebug);
+						#-------------------------------------------------------------------------------------
+					}
+				}
+			
+				if ($currentNibFile ne "" && $currentOID ne "")
+				{
+					push @theALAChanges,	{	"filePath"	=> $currentNibFile,
+												"oid"		=> $currentOID,
+												"cood"		=> $currentCood,
+											};
+				}
+			}
+		}
+	}
+	else
+	{
+		`mkdir "$agALALogPath"`;
+	}
+	
+
+	my $agALAChangesLogFilePath = $gAppleGlotEnvPath . "_Logs/AutoLayout_Log/alaChangesLog";
+
+	open alaChangedLogFile, "> $agALAChangesLogFilePath" or die "Failed to open $agALAChangesLogFilePath\n";
+
+	for ($index = 0; $index < (scalar @theALAChanges); $index++)
+	{
+		my %alaChangesItem = %{$theALAChanges[$index]};
+		
+		print alaChangedLogFile "$alaChangesItem{'filePath'}\t";
+		print alaChangedLogFile "$alaChangesItem{'oid'}\t";
+		print alaChangedLogFile "$alaChangesItem{'cood'}\n";
+		
+		#--Debug--------------------------------------------------------------------------
+		if ($gDebug)
+		{
+			print STDERR "[Debug:AAflverifierFilter] file path: $alaChangesItem{'filePath'}\n";
+			print STDERR "[Debug:AAflverifierFilter] oid:       $alaChangesItem{'oid'}\n";
+			print STDERR "[Debug:AAflverifierFilter] cood:      $alaChangesItem{'cood'}\n";
+		}
+		#-------------------------------------------------------------------------------------
+	}
+
+	close alaChangedLogFile;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	InALAChanges
+#---------------------------------------------------------------------------------------------
+
+sub InALAChanges
+{
+	my ($inFilePath, $inOID, $inCood) = @_;
+	my $inALAChanges = 0;
+
+	for ($index = 0; $index < (scalar @gALAChanges); $index++)
+	{
+		my %alaChangesItem = %{$gALAChanges[$index]};
+
+		#--Debug--------------------------------------------------------------------------
+		if ($gDebug)
+		{
+			print STDERR "[Debug:AAflverifierFilter] in file path: $inFilePath\n";
+			print STDERR "[Debug:AAflverifierFilter] in oid:       $inOID\n";
+			print STDERR "[Debug:AAflverifierFilter] in cood:      $inCood\n";
+			print STDERR "[Debug:AAflverifierFilter] file path:    $alaChangesItem{'filePath'}\n";
+			print STDERR "[Debug:AAflverifierFilter] oid:          $alaChangesItem{'oid'}\n";
+			print STDERR "[Debug:AAflverifierFilter] cood:         $alaChangesItem{'cood'}\n";
+		}
+		#-------------------------------------------------------------------------------------
+
+		
+		if ($alaChangesItem{'filePath'} eq $inFilePath
+			&& $alaChangesItem{'oid'} eq $inOID
+			&& $alaChangesItem{'cood'} eq $inCood)
+		{
+			$inALAChanges = 1;
+			last;
+		}
+	}
+	
+	return $inALAChanges;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	ReadADChanges
+#---------------------------------------------------------------------------------------------
+
+sub ReadADChanges
+{
+	my $index;
+	my $line;
+
+
+	AALocUtilities::PrintLog("\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+	AALocUtilities::PrintLog("# Read AD Changes Log\n");
+	AALocUtilities::PrintLog("#----------------------------------------------------------------------------------------\n");
+
+	my $receiveTranKitLogFilePath = AALocEnvUtilities::GetReportsPathFromLocEnv($gLocEnv) . "TranslationKitSubmit_receiveTranslationKitLog.txt";
+
+	if (-e $receiveTranKitLogFilePath)
+	{
+		open(FILECONTENT, "<$receiveTranKitLogFilePath") or die "Cannot open '$receiveTranKitLogFilePath': $!";
+			@fileContent = <FILECONTENT>;
+		close(FILECONTENT);
+
+		$numberOfLines = @fileContent;
+
+
+		$currentADFile = "";
+
+		for ($index = 0; $index < $numberOfLines; $index++)
+		{
+			$line = $fileContent[$index];
+
+			if ($line =~ m/^(.*)\/(.*?).wg>$/)
+			{
+				#--Debug------------------------------------------------------------------------------
+				# print STDERR "[Debug:AAflverifierFilter] WG file $2\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+
+				$currentADFile = "";
+			}
+			elsif ($line =~ m/^(.*)\/(.*?).ad>$/)
+			{
+				$currentADFile = $2;
+
+				#--Debug------------------------------------------------------------------------------
+				# print STDERR "[Debug:AAflverifierFilter] AD file $currentADFile\n" if ($gDebug);
+				#-------------------------------------------------------------------------------------
+			}
+			elsif ($line =~ m/### Trans: (.*) translation changed/)
+			{
+				if ($currentADFile ne "")
+				{
+					$filePath = $1;
+					if ($filePath =~ /.nib.strings/)
+					{
+						$filePath =~ s|.nib.strings|.nib|;
+					}
+					
+					$line = $fileContent[++$index];
+					$line =~ m/base       : (.*?)$/;
+					$base = $1;
+					
+					$line = $fileContent[++$index];
+					$line =~ m/tran \(org\) : (.*?)$/;
+					$tranOrg = $1;
+					
+					$line = $fileContent[++$index];
+					$line =~ m/tran \(new\) : (.*?)$/;
+					$tranNew = $1;
+
+
+					push @gADChanges,	{	"filePath"	=> $filePath,
+											"base"		=> $base,
+											"tranOrg"	=> $tranOrg,
+											"tranNew"	=> $tranNew,
+										};
+
+
+					#--Debug--------------------------------------------------------------------------
+					if ($gDebug)
+					{
+						# print STDERR "[Debug:AAflverifierFilter] file path:  $filePath\n";
+						# print STDERR "[Debug:AAflverifierFilter] base:       $base\n";
+						# print STDERR "[Debug:AAflverifierFilter] tran (Org): $tranOrg\n";
+						# print STDERR "[Debug:AAflverifierFilter] tran (New): $tranNew\n";
+					}
+					#---------------------------------------------------------------------------------
+				}
+			}
+		}
+	}
+
+
+	#--Debug--------------------------------------------------------------------------
+	if ($gDebug)
+	{
+		for ($index = 0; $index < (scalar @gADChanges); $index++)
+		{
+			my %adChangesItem = %{$gADChanges[$index]};
+			
+			print STDERR "[Debug:AAflverifierFilter] file path:  $adChangesItem{'filePath'}\n";
+			print STDERR "[Debug:AAflverifierFilter] base:       $adChangesItem{'base'}\n";
+			print STDERR "[Debug:AAflverifierFilter] tran (Org): $adChangesItem{'tranOrg'}\n";
+			print STDERR "[Debug:AAflverifierFilter] tran (New): $adChangesItem{'tranNew'}\n";
+		}
+	}
+	#---------------------------------------------------------------------------------
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	InADChanges
+#---------------------------------------------------------------------------------------------
+
+sub InADChanges
+{
+	my ($inFilePath, $inBase, $inTranOrg, $inTranNew) = @_;
+	my $inADChanges = 0;
+
+	for ($index = 0; $index < (scalar @gADChanges); $index++)
+	{
+		my %adChangesItem = %{$gADChanges[$index]};
+		
+		if ($adChangesItem{'filePath'} eq $inFilePath
+			&& $adChangesItem{'base'} eq $inBase
+			&& $adChangesItem{'tranOrg'} eq $inTranOrg
+			&& $adChangesItem{'tranNew'} eq $inTranNew)
+		{
+			$inADChanges = 1;
+			last;
+		}
+	}
+	
+	return $inADChanges;
+}
+
+
+
+#---------------------------------------------------------------------------------------------
+#	usage
+#---------------------------------------------------------------------------------------------
+
+sub usage
+{
+    print "AAflverifierFilter [Version $version]\n\n";
+    print "  -locenv				- Loc Env\n";
+    print "  -h           			- Show this help \n";
+    exit(2);
+}
+
+
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================

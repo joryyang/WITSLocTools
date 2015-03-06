@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<string>CA</string>
+	<string>TH</string>
+	<string>CH</string>
+	<string>FU</string>
+	<string>D</string>
+	<string>J</string>
+	<string>E</string>
+	<string>N</string>
+	<string>T</string>
+	<string>BR</string>
+	<string>DK</string>
+	<string>H</string>
+	<string>K</string>
+	<string>RS</string>
+	<string>S</string>
+	<string>PL</string>
+	<string>PO</string>
+	<string>KH</string>
+	<string>TA</string>
+	<string>MG</string>
+	<string>TU</string>
+	<string>RO</string>
+	<string>CR</string>
+	<string>GR</string>
+	<string>UA</string>
+	<string>SL</string>
+	<string>AB</string>
+	<string>HB</string>
+	<string>CZ</string>
+	<string>VN</string>
+	<string>ID</string>
+	<string>MY</string>
+	<string>MX</string>
+</array>
+</plist>

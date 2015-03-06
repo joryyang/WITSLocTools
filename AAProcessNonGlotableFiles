@@ -1,0 +1,1061 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AAProcessNonGlotableFiles
+##        Author:	Stanley Au-Yeung
+##          Date:	Thursday, September 23, 2004
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	05/10/08	12:00	SA		version 1.1.6
+##	05/10/08	12:00	SA		Uses AALoc Libs
+##	02/25/08	12:00	SA		version 1.1.5
+##	02/25/08	12:00	SA		Fixed a bug in IsSameFile()
+##	01/03/08	22:00	SA		version 1.1.4
+##	01/03/08	22:00	SA		Renamed GetLocLanguage to GetLprojLanguage
+##	01/03/08	22:00	SA		Extract only one file for the files are same (YuPing method)
+##	12/14/07	22:00	SA		version 1.1.3
+##	12/14/07	22:00	SA		Put Non-glottables _OldBase
+##	12/11/07	16:00	SA		version 1.1.2
+##	12/11/07	16:00	SA		Put Non-glottables _OldLoc
+##	09/26/07	17:00	SA		version 1.1.1
+##	09/26/07	17:00	SA		Fixed kLprojLongForm and kLprojShortForm
+##	08/27/07	11:00	SA		version 1.1
+##	08/27/07	11:00	SA		Update to support short form of .lproj
+##	08/01/07	12:00	SA		version 1.0.9
+##	08/01/07	12:00	SA		Don't extract .xib as non-glottables
+##	08/18/06	10:00	SA		version 1.0.8
+##	08/18/06	10:00	SA		Added -getVersion
+##	12/20/05	12:30	SA		version 1.0.7
+##	12/20/05	12:30	SA		Fixed IsFileUpdatedOrNew() for rtfd
+##	11/08/05	13:00	SA		Added -debug
+##	10/14/05	12:00	SA		version 1.0.6
+##	10/14/05	11:00	SA		Added parameter -extractAll to extract all non-glottable
+##								files even not updated
+##	10/14/05	11:00	SA		Added IsFileUpdatedOrNew()
+##	10/14/05	11:00	SA		Fixed can't handle AppleGlot path contains "-h"
+##	10/14/05	11:00	SA		Added $gDebug
+##	09/21/05	16:00	SA		version 1.0.5
+##	09/21/05	16:00	SA		Removed checking of number of parameters
+##	08/08/05	09:00	SA		Fixed GetLocLanguage() error message
+##	08/05/05	16:00	SA		version 1.0.4
+##	08/02/05	16:00	SA		AppleGlot support .xml, .plist and .searchTerms
+##	07/14/05	18:00	SA		version 1.0.3
+##								1. Save log file to _Logs folder instead of _LKCXInfo
+##								2. Changes GetLocLanguage method
+##	10/15/04	02:30	SA		version 1.0.2 Fixes the FU problem
+##	10/04/04	23:00	SA		version 1.0.1
+##								1. Fixes the typo in Help
+##								2. Changes parameter extractAsia to extractByFileType
+##								3. Changes parameter extractEuro to extractByProject
+##								4. Don't restore the nonglotable files if there is no
+##								   corrspond tarball in _NewLoc 
+##	09/23/04	12:00	SA		Original version
+##
+##*****************************************************************************
+
+#=============================================================================================
+#	Modules Used
+#=============================================================================================
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Compare;
+
+use Foundation;
+use AALocUtilities;
+
+
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+
+# set version string
+$version = "1.1.6";
+
+$gDebug = 0;
+$gExtractByFileType = 0;
+$gExtractByProject = 0;
+$gRestore = 0;
+$gFroceExtract = 0;
+$gExtractAll = 0;
+$gAGEnvironmentPath = "";
+$gNewLocPath = "";
+$gOldLocPath = "";
+$gNonGlotablePath = "";
+$gNonGlotableReferencePath = "";
+$gNonGlotableOldBasePath = "";
+$gNonGlotableOldLocPath = "";
+$gNonGlotableLogFile = "";
+
+%gFindLanguageResult = ();
+
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&UsageLine();
+	exit (2);
+}
+
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-getVersion")
+	{
+		print $version;
+		exit (2);
+	}
+
+	if ($item eq "-debug")
+	{
+		$gDebug = 1;
+	}
+
+	if ($item eq "-extractByProject")
+	{
+		$gExtractByProject = 1;
+	}
+	elsif ($item eq "-extractByFileType")
+	{
+		$gExtractByFileType = 1;
+	}
+	elsif ($item eq "-restore")
+	{
+		$gRestore = 1;
+	}
+	elsif ($item eq "-force")
+	{
+		$gFroceExtract = 1;
+	}
+	elsif ($item eq "-extractAll")
+	{
+		$gExtractAll = 1;
+	}
+	else
+	{
+		$gAGEnvironmentPath = $item;
+	}
+}
+
+if (-d $gAGEnvironmentPath)
+{
+	$gNonGlotableLogFile = $gAGEnvironmentPath . "_Logs/nonGlotableLog.txt";
+	$gNonGlotablePath = $gAGEnvironmentPath . "_NonGlotable";
+	$gNonGlotableReferencePath = $gAGEnvironmentPath . "_NonGlotable_Reference/";
+	$gNonGlotableOldBasePath = $gNonGlotableReferencePath . "_OldBase";
+	$gNonGlotableOldLocPath = $gNonGlotableReferencePath . "_OldLoc";
+	$gNewLocPath = $gAGEnvironmentPath . "_NewLoc";
+	$gOldLocPath = $gAGEnvironmentPath . "_OldLoc";
+	$gOldBasePath = $gAGEnvironmentPath . "_OldBase";
+
+
+	if ($gRestore)
+	{
+		&RestoreNonGlotableFiles();	
+	}
+	else
+	{
+		&ExtractNonGlotableFiles();	
+	}
+}
+else
+{
+	print "ERROR: specified path '$gAGEnvironmentPath' doesn't exist.\n";
+	exit(1);
+}
+
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#	Function Definitions
+#=============================================================================================
+
+#---------------------------------------------------------------------------------------------
+#	GetLprojLanguage
+#---------------------------------------------------------------------------------------------
+
+sub GetLprojLanguage
+{
+	my %lprojs = ();
+	
+	%gFindLanguageResult = ();
+	find \&SetLocLproj, $gNewLocPath;
+
+	unless (scalar %gFindLanguageResult)
+	{
+		printf STDERR "### ERROR: No localized .lproj in $gAGEnvironmentPath.\n";
+		exit 1;
+	}
+
+	my @tmp = sort {$gFindLanguageResult{$a} <=> $gFindLanguageResult{$b}} keys %gFindLanguageResult;
+		
+	return $AALocUtilities::kLprojLongForm{$tmp[$#array]};
+}
+
+sub SetLocLproj
+{
+	if (m/(.+).lproj$/ && ($1 ne "English") && ($1 ne "en"))
+	{	
+		$gFindLanguageResult{$1}++;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsXMLFileGlottable
+#
+#	Return whether the XML File is glottable or not.
+#---------------------------------------------------------------------------------------------
+
+sub IsXMLFileGlottable
+{
+	my ($inXMLFile) = @_;
+	my (@xmlFileContent, $line);
+	my $isGlottable = 0;
+	
+	open(XMLFILECONTENT, "<$inXMLFile") or die "Cannot open '$inXMLFile': $!";
+		@xmlFileContent = <XMLFILECONTENT>;
+	close(XMLFILECONTENT);
+	
+	if ($xmlFileContent[0] =~ m/\?xml/)
+	{
+		foreach $line(@xmlFileContent)
+		{
+			if ($line =~ m/localizable/)
+			{
+				$isGlottable = 1;
+				last;
+			}
+		}
+	}
+
+	return $isGlottable;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	CheckPlistOjects
+#---------------------------------------------------------------------------------------------
+
+sub CheckPlistOjects
+{
+	my ($inPlistObject, $inGlottable) = @_;
+
+
+	if ($inPlistObject and $$inPlistObject)
+	{
+		my $allKeys = ${$inPlistObject}->allKeys();
+		
+		for (my $index = 0; $index < ${$inPlistObject}->count(); $index++)
+		{
+			my $key = $allKeys->objectAtIndex_($index)->UTF8String();
+			
+			if ($key eq "_LOCALIZABLE_")
+			{
+				${$inGlottable} = 1;
+				last;
+			}
+			
+			my $object = ${$inPlistObject}->objectForKey_($key);
+			
+			if ($object and $$object and $object->isKindOfClass_(NSDictionary->class))
+			{
+				CheckPlistOjects(\$object, \$inGlottable);
+			}
+		}
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsPlistFileGlottable
+#
+#	Return whether the Plist File is glottable or not.
+#---------------------------------------------------------------------------------------------
+
+sub IsPlistFileGlottable
+{
+	my ($inPlistFile) = @_;
+	my $isGlottable = 0;
+	my ($plistObject) = NSDictionary->dictionaryWithContentsOfFile_($inPlistFile);
+
+
+	if (! $plistObject or ! $$plistObject)
+	{
+		print "###Error: $inPlist has problem\n";
+	}
+	else
+	{
+		CheckPlistOjects(\$plistObject, \$isGlottable);
+	}
+
+	return $isGlottable;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsFileUpdatedOrNew
+#
+#	Return whether the File is updated/new.
+#---------------------------------------------------------------------------------------------
+
+sub IsFileUpdatedOrNew
+{
+	my ($inFile) = @_;
+	my %colorLabels = ();
+	my $labelColor = 'None';
+
+
+	if ($gExtractAll)
+	{
+		return 1;
+	}
+	
+
+	$colorLabels = `getFinderLabel "$inFile"`;
+	eval $colorLabels;
+	
+	#--Debug----------------------------------------------------------------------------------
+	print "[Debug:IsFileUpdatedOrNew]  colorLabels = $colorLabels\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+	
+	$labelColor = $colorLabels{$inFile};
+	
+	#--Debug----------------------------------------------------------------------------------
+	print "[Debug:IsFileUpdatedOrNew]  labelColor = $labelColor\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+
+	# if ($labelColor eq "Red" || $labelColor eq "Yellow")
+	# {
+	# 	return 1;
+	# }
+	# else
+	# {
+	
+	#	return 0;
+	# }
+	
+		
+	if ($labelColor eq "None")
+	{
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsFileGlottable
+#
+#	Return whether the File is glottable or not.
+#---------------------------------------------------------------------------------------------
+
+sub IsFileGlottable
+{
+	my ($inFile) = @_;
+
+	#--Debug----------------------------------------------------------------------------------
+	print "[Debug:IsFileGlottable]\n" if ($gDebug);
+	#-----------------------------------------------------------------------------------------
+
+	
+	if ($gFroceExtract)
+	{
+		return 0;
+	}
+	
+	($fileType, $others) = reverse(split(/\./, $inFile));
+
+	if ($fileType eq "xml")
+	{
+		return IsXMLFileGlottable($inFile);
+	}
+	elsif ($fileType eq "plist")
+	{
+		return IsPlistFileGlottable($inFile);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	IsSameFile
+#
+#	Return whether the Files are same.
+#---------------------------------------------------------------------------------------------
+
+sub IsSameFile
+{
+	my ($inFile1, $inFile2) = @_;
+	
+	
+	if (((-d "$inFile1") && (-d "$inFile2"))
+		|| ((-e "$inFile1") && (-e "$inFile2")))
+	{
+		my $result = `diff -qr "$inFile1" "$inFile2"`;
+		
+		if ($result eq "")
+		{
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	ExtractNonGlotableFiles
+#---------------------------------------------------------------------------------------------
+
+sub ExtractNonGlotableFiles
+{
+	my $language = GetLprojLanguage();
+	my $shortFormLanguage = $AALocUtilities::kLprojShortForm{$language};
+
+
+	if (-e $gNonGlotableLogFile)
+	{
+		system "rm $gNonGlotableLogFile";
+	}
+
+	if (-e $gNonGlotablePath || -d $gNonGlotablePath)
+	{
+		system "rm -d -r $gNonGlotablePath";
+	}
+
+	`mkdir $gNonGlotablePath`;
+
+
+	if (-e $gNonGlotableReferencePath || -d $gNonGlotableReferencePath)
+	{
+		system "rm -d -r $gNonGlotableReferencePath";
+	}
+
+	`mkdir $gNonGlotableReferencePath`;
+
+
+	if (-e $gNonGlotableOldBasePath || -d $gNonGlotableOldBasePath)
+	{
+		system "rm -d -r $gNonGlotableOldBasePath";
+	}
+
+	`mkdir $gNonGlotableOldBasePath`;
+
+
+	if (-e $gNonGlotableOldLocPath || -d $gNonGlotableOldLocPath)
+	{
+		system "rm -d -r $gNonGlotableOldLocPath";
+	}
+
+	`mkdir $gNonGlotableOldLocPath`;
+
+
+	ExtractNonGlotableFilesByLproj($language);
+
+	if ($language ne $shortFormLanguage)
+	{
+		ExtractNonGlotableFilesByLproj($shortFormLanguage);
+	}
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	ExtractNonGlotableFilesByLproj
+#---------------------------------------------------------------------------------------------
+
+sub ExtractNonGlotableFilesByLproj
+{
+	my($inLanguage) = @_;
+	my $languagelproj = $inLanguage . ".lproj";
+	my $sourceNonGlotableFile;
+	my $sourceNonGlotableOldLocFile;
+	my $sourceNonGlotableOldBaseFile;
+	my $destNonGlotableFile;
+	my $destNonGlotableOldLocFile;
+	my $destNonGlotableOldBaseFile;
+
+	my @nonGlottableFileRecordList = ();
+	my $nonGlottableFileRecord;
+	my $sameFileExtracted = 0;
+
+	my $fileRecordFilename;
+	my $fileRecordSourcePath;
+	my $fileRecordDestPath;
+	
+
+	chomp(@searchResult = `find $gNewLocPath -type f \\( -path "*/$languagelproj/*" \\) | grep -v ".rtfd" | grep -v ".xib" | grep -v ".nib" | grep -v ".strings" | grep -v ".rsrc" | grep -v ".searchTerms" | grep -v "locversion.plist" | grep -v ".DS_Store"`);
+	
+	chomp(@searchRTFDResult = `find $gNewLocPath -type d \\( -path "*/$languagelproj/*.rtfd" \\)`);
+	
+	open OUT, ">> $gNonGlotableLogFile" or die "Failed to open $gNonGlotableLogFile\n";
+
+
+	#-----------------------------------------------------------------------------------------
+	#	Process Non-Glottable Files
+	#-----------------------------------------------------------------------------------------
+	
+	foreach $file (@searchResult)
+	{
+		if (IsFileUpdatedOrNew($file) && !IsFileGlottable($file))
+		{
+			#--Debug----------------------------------------------------------------------------------
+			print "[Debug:ExtractNonGlotableFiles]  destNonGlotableFile = $destNonGlotableFile\n" if ($gDebug);
+			#-----------------------------------------------------------------------------------------
+
+	
+			$sourceNonGlotableFile = $file;
+					
+			$file =~ s/$gNewLocPath//;	# take out the base path
+			$file =~ m/\/(.*)/;			# take out the first /
+			$file = $1;
+			$file =~ s/\/\//\//g;		# change // to /
+			# $file =~ s/ /\\ /g;			# change ' ' to '\ '
+	
+	
+	
+		
+			#--Debug----------------------------------------------------------------------------------
+			print "[Debug:ExtractNonGlotableFiles]  file = $file\n" if ($gDebug);
+			#-----------------------------------------------------------------------------------------
+
+			($projectName, $others) = split('/', $file);
+			
+			($others, $fileName) = split("/$languagelproj/", $file);
+			($fileType, $others) = reverse(split(/\./, $fileName));
+	
+			if ($gExtractByFileType)
+			{
+				$destNonGlotableFile = $gNonGlotablePath . '/' . $fileType . '/' . $projectName . '/' . $fileName;
+			}
+			else
+			{
+				$destNonGlotableFile = $gNonGlotablePath . '/' . $projectName . '/' . $fileName;
+			}
+
+	
+			#--Debug----------------------------------------------------------------------------------
+			print "[Debug:ExtractNonGlotableFiles]  destNonGlotableFile = $destNonGlotableFile\n" if ($gDebug);
+			#-----------------------------------------------------------------------------------------
+
+	
+			if (-e "$destNonGlotableFile" || -d "$destNonGlotableFile")
+			{
+				($folderName, $others) = split("/Contents/Resources/$languagelproj/", "$sourceNonGlotableFile");
+				($folderName, $others) = reverse(split('/', "$folderName"));
+				($folderName, $others) = split(/\./, "$folderName");
+	
+				if ($gExtractByFileType)
+				{
+					$destNonGlotableFile = $gNonGlotablePath . '/'
+											. $fileType . '/'
+											. "$projectName" . '/'
+											. "$folderName" . '/'
+											. "$fileName";
+				}
+				else
+				{
+					$destNonGlotableFile = $gNonGlotablePath . '/'
+											. $projectName . '/'
+											. "$folderName" . '/'
+											. "$fileName";
+				}
+			}
+
+	
+			#--Debug----------------------------------------------------------------------------------
+			print "[Debug:ExtractNonGlotableFiles]  destNonGlotableFile = $destNonGlotableFile\n" if ($gDebug);
+			#-----------------------------------------------------------------------------------------
+
+	
+			if (-e "$destNonGlotableFile" || -d "$destNonGlotableFile")
+			{
+				$folderNameNumber = 1;
+	
+				do 
+				{
+					if ($gExtractByFileType)
+					{
+						$destNonGlotableFile = $gNonGlotablePath . '/'
+												. $fileType . '/'
+												. $projectName . '/'
+												. $folderName
+												. $folderNameNumber . '/'
+												. $fileName;
+					}
+					else
+					{
+						$destNonGlotableFile = $gNonGlotablePath . '/'
+												. $projectName . '/'
+												. "$folderName"
+												. $folderNameNumber . '/'
+												. "$fileName";
+					}
+	
+					$folderNameNumber = $folderNameNumber + 1;
+				} while (-e "$destNonGlotableFile" || -d "$destNonGlotableFile");
+			}		
+
+	
+			#--Debug----------------------------------------------------------------------------------
+			print "[Debug:ExtractNonGlotableFiles]  destNonGlotableFile = $destNonGlotableFile\n" if ($gDebug);
+			#-----------------------------------------------------------------------------------------
+
+	
+			if (-e "$destNonGlotableFile" || -d "$destNonGlotableFile")
+			{
+				print "\n###Error: $file\n";
+			}		
+	
+	
+			$sameFileExtracted = 0;
+			
+			foreach $nonGlottableFileRecord (@nonGlottableFileRecordList)
+			{
+				$fileRecordFilename = $nonGlottableFileRecord->{"fileName"};
+				$fileRecordSourcePath = $nonGlottableFileRecord->{"sourcePath"};
+				$fileRecordDestPath = $nonGlottableFileRecord->{"destPath"};
+				
+				if ($fileRecordFilename eq $fileName)
+				{
+					if (IsSameFile($fileRecordSourcePath, $sourceNonGlotableFile))
+					{
+						$sameFileExtracted = 1;
+						$destNonGlotableFile = $fileRecordDestPath;
+						
+						last;
+					}
+				}
+			}
+	
+	
+			if ($sameFileExtracted)
+			{
+			
+			}
+			else
+			{
+				$nonGlottableFileRecord = {};
+				$nonGlottableFileRecord->{"fileName"} = $fileName;
+				$nonGlottableFileRecord->{"sourcePath"} = $sourceNonGlotableFile;
+				$nonGlottableFileRecord->{"destPath"} = $destNonGlotableFile;
+				
+				push @nonGlottableFileRecordList, $nonGlottableFileRecord;
+
+
+				`ditto "$sourceNonGlotableFile" "$destNonGlotableFile"`;
+				
+				
+				# Extract _OldLoc
+				
+				$sourceNonGlotableOldLocFile = $sourceNonGlotableFile;
+				$sourceNonGlotableOldLocFile =~ s/_NewLoc/_OldLoc/;
+				$destNonGlotableOldLocFile = $destNonGlotableFile;
+				$destNonGlotableOldLocFile =~ s/_NonGlotable/_NonGlotable_Reference\/_OldLoc/;
+				
+				if (-e $sourceNonGlotableOldLocFile)
+				{
+					`ditto "$sourceNonGlotableOldLocFile" "$destNonGlotableOldLocFile"`;
+				}
+				else
+				{
+					$sourceNonGlotableOldLocFile =~ s/$gOldLocPath//;	# take out the base path
+					print "   Cannot find  $sourceNonGlotableOldLocFile in _OldLoc\n";
+				}
+
+
+				# Extract _OldBase
+				
+				$sourceNonGlotableOldBaseFile = $sourceNonGlotableFile;
+				$sourceNonGlotableOldBaseFile =~ s/_NewLoc/_OldBase/;
+				$sourceNonGlotableOldBaseFile =~ s/$languagelproj/English.lproj/;
+				$destNonGlotableOldBaseFile = $destNonGlotableFile;
+				$destNonGlotableOldBaseFile =~ s/_NonGlotable/_NonGlotable_Reference\/_OldBase/;
+				
+				if (-e $sourceNonGlotableOldBaseFile)
+				{
+					`ditto "$sourceNonGlotableOldBaseFile" "$destNonGlotableOldBaseFile"`;
+				}
+				else
+				{
+					$sourceNonGlotableOldBaseFile = $sourceNonGlotableFile;
+					$sourceNonGlotableOldBaseFile =~ s/_NewLoc/_OldBase/;
+					$sourceNonGlotableOldBaseFile =~ s/$languagelproj/en.lproj/;
+
+					if (-e $sourceNonGlotableOldBaseFile)
+					{
+						`ditto "$sourceNonGlotableOldBaseFile" "$destNonGlotableOldBaseFile"`;
+					}
+					else
+					{
+						$sourceNonGlotableOldBaseFile =~ s/$gOldBasePath//;	# take out the base path
+						print "   Cannot find  $sourceNonGlotableOldBaseFile in _OldBase\n";
+					}
+				}
+			}
+
+		
+			$sourceNonGlotableFile =~ s/$gNewLocPath//;	# take out the base path
+			$destNonGlotableFile =~ s/$gNonGlotablePath//;	# take out the base path
+		
+			print "Extract $destNonGlotableFile\n";
+	
+			if ($sameFileExtracted)
+			{
+				$fileRecordSourcePath =~ s/$gNewLocPath//;	# take out the base path
+				print "   same as $fileRecordSourcePath\n";
+			}
+
+	
+			print OUT "$sourceNonGlotableFile\n";
+			print OUT "$destNonGlotableFile\n";
+		}
+	}
+
+	
+	#-----------------------------------------------------------------------------------------
+	#	Process rtfd Files
+	#-----------------------------------------------------------------------------------------
+	
+	$fileType = "rtfd";
+
+	@nonGlottableFileRecordList = ();
+
+	foreach $file (@searchRTFDResult)
+	{
+		if (IsFileUpdatedOrNew($file))
+		{
+			$sourceNonGlotableFile = $file;
+					
+			$file =~ s/$gNewLocPath//;	# take out the base path
+			$file =~ m/\/(.*)/;			# take out the first /
+			$file = $1;
+			$file =~ s/\/\//\//g;		# change // to /
+			# $file =~ s/ /\\ /g;			# change ' ' to '\ '
+	
+			($projectName, $others) = split('/', $file);
+			
+			($rftdFilePath, $others) = split('.rtfd', $sourceNonGlotableFile);
+	
+			$rftdFilePath = $rftdFilePath . ".rtfd";
+			($others, $fileName) = split("/$languagelproj/", $rftdFilePath);
+	
+			if ($gExtractByFileType)
+			{
+				$destNonGlotableFile = $gNonGlotablePath . '/'
+										. $fileType . '/'
+										. $projectName . '/'
+										. $fileName;
+			}
+			else
+			{
+				$destNonGlotableFile = $gNonGlotablePath . '/' . $projectName . '/' . $fileName;
+			}
+	
+	
+			if (-e $destNonGlotableFile || -d $destNonGlotableFile)
+			{
+				($folderName, $others) = split("/Contents/Resources/$languagelproj/", $sourceNonGlotableFile);
+				($folderName, $others) = reverse(split('/', $folderName));
+				($folderName, $others) = split(/\./, $folderName);
+	
+				if ($gExtractByFileType)
+				{
+					$destNonGlotableFile = $gNonGlotablePath . '/'
+											. $fileType . '/'
+											. $projectName . '/'
+											. $folderName . '/'
+											. $fileName;
+				}
+				else
+				{
+					$destNonGlotableFile = $gNonGlotablePath . '/'
+											. $projectName . '/'
+											. $folderName . '/'
+											. $fileName;
+				}
+			}
+	
+			if (-e $destNonGlotableFile || -d $destNonGlotableFile)
+			{
+				$folderNameNumber = 1;
+	
+				do 
+				{
+					if ($gExtractByFileType)
+					{
+						$destNonGlotableFile = $gNonGlotablePath . '/'
+												. $fileType . '/'
+												. $projectName . '/'
+												. $folderName
+												. $folderNameNumber . '/'
+												. $fileName;
+					}
+					else
+					{
+						$destNonGlotableFile = $gNonGlotablePath . '/'
+												. $projectName . '/'
+												. $folderName
+												. $folderNameNumber . '/'
+												. $fileName;
+					}
+	
+					$folderNameNumber = $folderNameNumber + 1;
+				} while (-e $destNonGlotableFile || -d $destNonGlotableFile);
+			}		
+	
+			if (-e $destNonGlotableFile || -d $destNonGlotableFile)
+			{
+				print "\n###Error: $rftdFilePath\n";
+			}		
+	
+	
+	
+			$sameFileExtracted = 0;
+			
+			foreach $nonGlottableFileRecord (@nonGlottableFileRecordList)
+			{
+				$fileRecordFilename = $nonGlottableFileRecord->{"fileName"};
+				$fileRecordSourcePath = $nonGlottableFileRecord->{"sourcePath"};
+				$fileRecordDestPath = $nonGlottableFileRecord->{"destPath"};
+
+				if ($fileRecordFilename eq $fileName)
+				{
+					if (IsSameFile($fileRecordSourcePath, $sourceNonGlotableFile))
+					{
+						$sameFileExtracted = 1;
+						$destNonGlotableFile = $fileRecordDestPath;
+						
+						last;
+					}
+				}
+			}
+	
+	
+			if ($sameFileExtracted)
+			{
+			
+			}
+			else
+			{
+				$nonGlottableFileRecord = {};
+				$nonGlottableFileRecord->{"fileName"} = $fileName;
+				$nonGlottableFileRecord->{"sourcePath"} = $rftdFilePath;
+				$nonGlottableFileRecord->{"destPath"} = $destNonGlotableFile;
+				
+				push @nonGlottableFileRecordList, $nonGlottableFileRecord;
+
+				`ditto "$rftdFilePath" "$destNonGlotableFile"`;
+
+				# Extract _OldLoc
+				
+				$sourceNonGlotableOldLocFile = $rftdFilePath;
+				$sourceNonGlotableOldLocFile =~ s/_NewLoc/_OldLoc/;
+				$destNonGlotableOldLocFile = $destNonGlotableFile;
+				$destNonGlotableOldLocFile =~ s/_NonGlotable/_NonGlotable_Reference\/_OldLoc/;
+				
+				if (-d $sourceNonGlotableOldLocFile)
+				{
+					`ditto "$sourceNonGlotableOldLocFile" "$destNonGlotableOldLocFile"`;
+				}
+				else
+				{
+					$sourceNonGlotableOldLocFile =~ s/$gOldLocPath//;	# take out the base path
+					print "   Cannot find  $sourceNonGlotableOldLocFile in _OldLoc\n";
+				}
+
+				
+				# Extract _OldBase
+				
+				$sourceNonGlotableOldBaseFile = $rftdFilePath;
+				$sourceNonGlotableOldBaseFile =~ s/_NewLoc/_OldBase/;
+				$sourceNonGlotableOldBaseFile =~ s/$languagelproj/English.lproj/;
+				$destNonGlotableOldBaseFile = $destNonGlotableFile;
+				$destNonGlotableOldBaseFile =~ s/_NonGlotable/_NonGlotable_Reference\/_OldBase/;
+				
+				if (-d $sourceNonGlotableOldBaseFile)
+				{
+					`ditto "$sourceNonGlotableOldBaseFile" "$destNonGlotableOldBaseFile"`;
+				}
+				else
+				{
+					$sourceNonGlotableOldBaseFile = $rftdFilePath;
+					$sourceNonGlotableOldBaseFile =~ s/_NewLoc/_OldBase/;
+					$sourceNonGlotableOldBaseFile =~ s/$languagelproj/en.lproj/;
+
+					if (-d $sourceNonGlotableOldBaseFile)
+					{
+						`ditto "$sourceNonGlotableOldBaseFile" "$destNonGlotableOldBaseFile"`;
+					}
+					else
+					{
+						$sourceNonGlotableOldBaseFile =~ s/$gOldBasePath//;	# take out the base path
+						print "   Cannot find  $sourceNonGlotableOldBaseFile in _OldBase\n";
+					}
+				}
+			}
+			
+	
+			$rftdFilePath =~ s/$gNewLocPath//;	# take out the base path
+			$destNonGlotableFile =~ s/$gNonGlotablePath//;	# take out the base path
+	
+			print "Extract $destNonGlotableFile\n";
+
+			if ($sameFileExtracted)
+			{
+				$fileRecordSourcePath =~ s/$gNewLocPath//;	# take out the base path
+				print "   same as $fileRecordSourcePath\n";
+			}
+		
+			print OUT "$rftdFilePath\n";
+			print OUT "$destNonGlotableFile\n";
+		}
+	}
+
+	print "\n";
+
+	close OUT;
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	RestoreNonGlotableFiles
+#---------------------------------------------------------------------------------------------
+
+sub RestoreNonGlotableFiles
+{
+	open(NONGLOTABLE, "<$gNonGlotableLogFile")
+		or die "Cannot open NonGlotfile log file '$gNonGlotableLogFile': $!";
+	@nonGlotableFiles = <NONGLOTABLE>;
+	close(NONGLOTABLE);
+
+	for ($index = 0; $index < @nonGlotableFiles;)
+	{
+		$sourceNonGlotableFile = $nonGlotableFiles[$index++];
+		chomp($sourceNonGlotableFile);
+		$temp = $sourceNonGlotableFile;
+		$temp =~ m/\/(.*)/;			# take out the first /
+		$temp = $1;
+		($projectName, $others) = split('/', $temp);
+		$projectPath = $gNewLocPath . '/' . $projectName;
+
+		$sourceNonGlotableFile = $gNewLocPath . $sourceNonGlotableFile;
+
+
+		$destNonGlotableFile = $nonGlotableFiles[$index++];
+		chomp($destNonGlotableFile);
+		$destNonGlotableFile = $gNonGlotablePath . $destNonGlotableFile;
+
+		if (-e $projectPath || -d $projectPath)
+		{
+			# print "Copying $destNonGlotableFile to $sourceNonGlotableFile\n";
+
+			($fileName, $others) = reverse(split('/', $destNonGlotableFile));
+
+			print "Copying $projectName:$fileName\n";
+			`ditto "$destNonGlotableFile" "$sourceNonGlotableFile"`;
+		}
+		else
+		{
+			print "Warning $projectName doesn't exit\n";
+		}
+	}
+
+	print "\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	UsageLine
+#---------------------------------------------------------------------------------------------
+
+sub UsageLine
+{
+	print "Usage: AAProcessNonGlotableFiles [-extractByFileType or -extractByProject or restore] <AppleGlot Environment>\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AAProcessNonGlotableFiles [Version $version]\n";
+	&UsageLine();
+	print "This command allows to:\n";
+	print "  -extractByFileType   extract the nonglotable files to _NonGlotable folder by file type\n";
+	print "  -extractByProject    extract the nonglotable files to _NonGlotable folder by project\n";
+	print "  -restore             restore the nonglotable files from _NonGlotable folder to _NewLoc\n";
+	print "  -force               extract all XML and plist files\n";
+	print "  -extractAll          extract all non-glottable files even not updated\n";
+	print "\n";
+	print "  -help or -h   Display this help.\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+

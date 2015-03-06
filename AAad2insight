@@ -1,0 +1,172 @@
+#!/usr/bin/perl
+
+# The outer "while" loop echos the input to the output while we are processing it.
+# Since "print" is the last statement we will only pass on input which we have
+# successfully finished processing.
+
+BEGIN {
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+	
+};
+
+
+use strict;
+use POSIX qw(tmpnam);
+use Getopt::Long;
+
+my ($scriptName);
+
+use lib `which $0` =~ m#^(.*)/[^/]+$#;
+($scriptName = $0) =~ s|(.+)/([^/]+)$|$2|;
+
+my ($source, $output, $language, $tempFile);
+
+&usage() unless @ARGV and GetOptions(
+        'src=s'       	   => \$source,
+        'dest=s'  	 	   => \$output,
+        'lang=s'		   => \$language,
+	);
+
+&usage() unless (-e $source && $output);
+
+$tempFile = tmpnam();
+
+
+# first convert the file out of UTF-8
+
+my ($fromConv, $toConv, $result);
+
+my %encoding = (
+	"ja" => "CP932",
+	"ko" => "CP949",
+	"zh_CN" => "CP936",
+	"zh_TW" => "CP950",
+	"pl" => "CP1250",
+	"ru" => "CP1251",
+	);
+
+if ($encoding{$language}) {
+	$toConv = $encoding{$language};
+} else {
+	$toConv = "CP1252";
+}
+
+$fromConv = "UTF-8";
+
+$result = `iconv -c -f $fromConv -t $toConv $source > $tempFile`;
+
+print "Result: $result\n" if ($result);
+
+
+# now we tweak it...
+
+my ($line, @xml, $xml, $file);
+
+undef $/;
+
+open (FILE, "< $tempFile") or die "can't open $tempFile.\n";
+$xml = <FILE>;
+close (FILE);
+
+open (OUTFILE, ">$output") || die "Can't open $output for output.\n";
+
+my ($cat, $plat, $context, $eng, $ref, $lang, $trans, $part1, $part2, $filePath, $fileChunk, $langIS);
+
+$xml = &handlechar($xml);
+
+while ( $xml =~ /<File>.*?<FilePath>(.*?)<\/FilePath>(.*?)<\/File>/sgi ) {
+
+	$filePath = $1;
+	$fileChunk = $2;
+	
+	while ( $fileChunk =~ /<Description>(.*?)<\/Description>.*?<Position>(.*?)<\/Position>.*?<TranslationSet>.*?<base.*?>(.*?)<\/base>.*?<tran[s]*\s*l[oc]*\s*=\s*\"([^\"]*?)\".*?>(.*?)<\/tran[s]*>.*?<\/TranslationSet>/sgi )
+	{
+		$context = $1;
+		($cat, $plat) = split (/\|/, $2);
+		$eng = $3;
+		$lang = $4;
+		$trans = $5;
+		
+		$langIS = ISTextForLangCode($lang);
+	
+		print OUTFILE "**\x0d\n";
+		print OUTFILE "<CATEGORY>$cat\x0d\n";
+		print OUTFILE "<PLATFORM>$plat\x0d\n";
+		print OUTFILE "<CONTEXT>$context\x0d\n";
+		print OUTFILE "<ENGLISH>$eng\x0d\n";
+		print OUTFILE "<REFERENCE>$filePath\x0d\n";
+		print OUTFILE "<$langIS>$trans\x0d\n";
+		print OUTFILE "<REFERENCE>$filePath\x0d\n";
+
+	}	
+}
+
+close (OUTFILE);
+
+
+sub usage {
+    print "@_\n" if @_;
+	print "\nad2insight usage:\n";
+	print "\nad2insight -src <ad file> -dest <insight glossary>\n";
+	print " [ -lang <language code> (only required for two-byte)]\n\n";
+	exit 1;	
+}
+
+sub ISTextForLangCode {
+	my ($input, %table);	
+	($input) = @_;
+	
+	%table = (
+		"nl" => "DUTCH",
+		"fr" => "FRENCH",
+		"de" => "GERMAN",
+		"it" => "ITALIAN",
+		"ja" => "JAPANESE",
+		"es" => "SPANISH",
+		"da" => "DANISH",
+		"fi" => "FINNISH",
+		"no" => "NORWEGIAN",
+		"sv" => "SWEDISH",
+		"pt" => "PORTUGUESE",
+		"ko" => "KOREAN",
+		"zh_CN" => "CHINESE",
+		"zh_TW" => "CHINESE",
+		"pl" => "POLISH",
+		"pt_PT" => "PORTUGUESE",
+		"ru" => "RUSSIAN",
+	);
+
+	return $table{$input};
+
+}
+
+# Replaces all characters that cannot be used in the .ad files
+# by their real equivalents
+sub handlechar {
+    $_ = $_[0];
+ 	s/&amp;/&/g ;
+    s/&apos;/'/g ;
+    s/&quot;/"/g ;
+    s/&lt;/</g ;
+    s/&gt;/>/g ;
+    return $_ ;
+}

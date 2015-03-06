@@ -1,0 +1,243 @@
+#!/usr/bin/perl
+
+##*****************************************************************************
+##
+##  Project Name:	AA LocProcess
+##     File Name:	AACheckNotTranslatedString
+##        Author:	Stanley Au-Yeung
+##          Date:	Friday, Aug 29, 2008
+##
+##   Description:	What it does...
+##
+##                            Copyright Apple Inc.
+##                            All rights reserved.
+##
+##*****************************************************************************
+##                       A U T H O R   I D E N T I T Y
+##*****************************************************************************
+##
+##	Initials	Name
+##	--------	-----------------------------------------------
+##	SA			Stanley Au-Yeung (stanleyauyeung@asia.apple.com)
+##
+##*****************************************************************************
+##                      R E V I S I O N   H I S T O R Y
+##*****************************************************************************
+##
+##	Date		Time	Author	Description
+##	--------	-----	------	---------------------------------------------
+##	08/29/08	12:00	SA		Original version
+##
+##*****************************************************************************
+
+BEGIN {
+	# Unfortunately the PATH and PERL5LIB is not setup correctly within Automator
+	# so some twists and turns to set up everything for the cli-tools we call later.
+	
+	my $PATH = $ENV{'PATH'};
+	my $PERL5LIB = $ENV{'PERL5LIB'};
+	my $EVOLUTIONPATH = `defaults read com.apple.ebs EVOLUTION`;
+	chomp ($EVOLUTIONPATH);
+	my $searchPath = "$EVOLUTIONPATH/LocEnv/locbin:$EVOLUTIONPATH/bin:/Developer/Tools:/System/Library/CoreServices:$PATH";
+	my $locEnv = `defaults read com.apple.ebs LOCENV`;
+	chomp ($locEnv);
+	if (  $locEnv ne '' ) {
+		$searchPath = "$locEnv/locbin:" . $searchPath;
+	}
+	$ENV{'PATH'} = "$searchPath";
+	$ENV{'PERL5LIB'} = "$EVOLUTIONPATH/site_perl_local:$PERL5LIB";
+	
+	# now we have the same issue outselves as we need Evolution
+	# more twists and turns
+	
+	unshift @INC, "$EVOLUTIONPATH/site_perl_local"; 
+	
+};
+
+
+#---------------------------------------------------------------------------------------------
+#	Modules Used
+#---------------------------------------------------------------------------------------------
+
+use lib `which "$0"` =~ m#^(.*)/[^/]+$#;
+
+use File::Path;
+use File::Find;
+use File::stat;
+use File::Spec;
+use File::Copy;
+use File::Compare;
+
+use Foundation;
+use Evolution;
+
+use AALocEnvUtilities;
+use AALocAppleGlotUtilities;
+
+
+#=============================================================================================
+#	Main Program
+#=============================================================================================
+
+
+# set version string
+$version = "1.0";
+
+$gDebug = 0;
+$gLocEnvPath = "";
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+#deals with bad arguments
+if (@ARGV == 0)
+{
+	print "\n### ERROR: Found no parameter.\n";
+	&UsageLine();
+	exit (2);
+}
+
+
+# deals with arguments
+foreach $item (@ARGV)
+{
+	if ($item eq "-help")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-h")
+	{
+		&Usage();
+		exit (2);
+	}
+
+	if ($item eq "-getVersion")
+	{
+		print $version;
+		exit (2);
+	}
+
+	if ($item eq "-debug")
+	{
+		$gDebug = 1;
+	}
+
+	$gLocEnvPath = $item;
+	$gLocEnvPath =~ s|/?$|/|;	# has to end with one slash
+}
+
+if (-d $gLocEnvPath)
+{
+	my $appleGlotEnvPath = AALocEnvUtilities::GetAppleGlotEnvPathFromLocEnv($gLocEnvPath);
+	my $appleGlotEnvNewLocPath = $appleGlotEnvPath . "_NewLoc/";
+
+
+	chomp(@searchResult = `find $appleGlotEnvNewLocPath -type f | grep ".properties.strings" | grep -v "English.lproj" | grep -v "en.lproj"`);
+	
+	foreach $newLocFile (@searchResult)
+	{
+		$newBaseFile = AALocAppleGlotUtilities::NewLocToNewBaseFilePath($newLocFile);
+		
+		if ($newLocFile ne "" && $newBaseFile ne "")
+		{
+			my $lineNumber = 0;
+			my $line;
+			
+			open(FILECONTENT, "<$newLocFile") or die "Cannot open '$newLocFile': $!";
+			@newLocfileContent = <FILECONTENT>;
+			close(FILECONTENT);
+			
+			open(FILECONTENT, "<$newBaseFile") or die "Cannot open '$newBaseFile': $!";
+			@newBasefileContent = <FILECONTENT>;
+			close(FILECONTENT);
+			
+			$numberOfLines = @newLocfileContent;
+			
+			for ($index = 0; $index < $numberOfLines; $index++)
+			{
+				# print "newbase: $newBasefileContent[$index]";
+				# print "newloc:  $newLocfileContent[$index]";
+				
+				if ($newBasefileContent[$index] eq $newLocfileContent[$index])
+				{
+					print "$newBasefileContent[$index]";
+				}
+			}
+		}
+	}
+}
+else
+{
+	print "ERROR: specified path '$gLocEnvPath' doesn't exist.\n";
+	exit(1);
+}
+
+
+exit(0);
+
+
+
+
+#=============================================================================================
+#	Function Definitions
+#=============================================================================================
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+sub PerlValue
+{
+	my $object = ( @_ );
+	return $object->description()->UTF8String();
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	
+#---------------------------------------------------------------------------------------------
+
+sub PrintLog
+{
+	my ($inMessage) = @_;
+	
+	print STDERR "$inMessage";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	UsageLine
+#---------------------------------------------------------------------------------------------
+
+sub UsageLine
+{
+	print "Usage: AACheckNotTranslatedString <Loc Environment>\n\n";
+}
+
+
+#---------------------------------------------------------------------------------------------
+#	Usage
+#---------------------------------------------------------------------------------------------
+
+sub Usage
+{
+	print "\n";
+	print "AACheckNotTranslatedString [Version $version]\n";
+	&UsageLine();
+	print "This command allows to:\n";
+	print "\n";
+	print "  -help or -h   Display this help.\n";
+	print "\n";
+
+	exit(2);
+}
+
+
+#=============================================================================================
+#									E N D   O F   F I L E
+#=============================================================================================
+
