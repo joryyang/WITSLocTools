@@ -140,7 +140,6 @@ def extraMotionPlugIns(tgz):
 		for dir in dirs:
 			targetdir = os.path.join(root, dir)
 			if targetdir[-48:] == MotionPlugIns:
-				# print targetdir
 				return targetdir
 	print '## Invalied loctar: %s'%tgz
 
