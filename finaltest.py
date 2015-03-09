@@ -2,6 +2,7 @@
 #coding=utf-8
 
 import os, sys, re, urllib2, time, linecache
+from biplist import *
 
 def tittle():
     print '*' * 70
@@ -35,13 +36,27 @@ def duplicationkey(stringsfiles):
     duplication = {}; store = []
     for stringsfile in stringsfiles:
         content = open(stringsfile).readlines()
-        for line in content:
-            if content.count(line) > 1 and line.count('=') == 1 and '/*' not in line.replace('\x00', '') and '%s%s'%(stringsfile, line) not in store:
-                store.append('%s%s'%(stringsfile, line))
+        keys = [re.findall('^"(.*?)" =', i.replace('\x00', '')) for i in content]
+        tmp = [['']]
+        for key in keys:
+            if key not in tmp:
+                tmp.append(key)
                 try:
-                    duplication[stringsfile] += line.replace('\x00', '')
-                except KeyError:
-                    duplication[stringsfile] = line.replace('\x00', '')
+                    first = keys.index(key)
+                    second = keys.index(key, first+1)
+                    if stringsfile in duplication:
+                        duplication[stringsfile] += '[Error] line %s: duplicated key [%s] already defined in line: %s\n'%(second+1, key[0], first+1)
+                    else:
+                        duplication[stringsfile] = '[Error] line %s: duplicated key [%s] already defined in line: %s\n'%(second+1, key[0], first+1)
+                except:
+                    pass
+        # for line in content:
+        #     if content.count(line) > 1 and line.count('=') == 1 and '/*' not in line.replace('\x00', '') and '%s%s'%(stringsfile, line) not in store:
+        #         store.append('%s%s'%(stringsfile, line))
+        #         try:
+        #             duplication[stringsfile] += line.replace('\x00', '')
+        #         except KeyError:
+        #             duplication[stringsfile] = line.replace('\x00', '')
     if not duplication:
         duplication['No problem found'] = ''
     return duplication
@@ -100,6 +115,11 @@ def exportNonGlotableFiles(path):
     
     return NewLoc, OldLoc, NewBase, OldBase
 
+def fileContent(file):
+    if file[-6:] == '.plist':
+        return readPlist(file)
+    else:
+        return open(file).read()
 
 def compareNonGlotableFiles(NL, OL, NB, OB):
     warnings = []; mark = 0
@@ -116,7 +136,7 @@ def compareNonGlotableFiles(NL, OL, NB, OB):
     
     for key in OldFile:
         if os.path.isfile(key.replace('_OldLoc', '_NewLoc')):
-            if open(key).read() <> open(OldFile[key]).read() and open(key.replace('_OldLoc', '_NewLoc')).read() == open(NewFile[key.replace('_OldLoc', '_NewLoc')]).read():
+            if fileContent(key) <> fileContent(OldFile[key]) and fileContent(key.replace('_OldLoc', '_NewLoc')) == fileContent(NewFile[key.replace('_OldLoc', '_NewLoc')]):
                 warnings.append('## Please process Non-glotable file:\n%s\n'%key.replace('_OldLoc', '_NewLoc'))
                 mark = 1
 
