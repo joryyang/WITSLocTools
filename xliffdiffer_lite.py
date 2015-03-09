@@ -1,12 +1,6 @@
 #! /usr/bin/env python
 #coding=utf-8
 	
-#	File:		glossarytester.py
-#
-#	Contains:	This script scans xliffs folder to check the glossary mismatch issues.
-#
-#	Author:		tiny Liu tinyliu@wistronits.com
-	
 import os
 import sys
 import linecache
