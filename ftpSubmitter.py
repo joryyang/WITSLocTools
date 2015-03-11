@@ -61,7 +61,10 @@ def main():
 
 if __name__ == '__main__':
 	try:
-		submitDict = submitResources(sys.argv[1])
+		if len(sys.argv)==3:
+			submitDict = submitResources(sys.argv[1],'')
+		else:
+			submitDict = submitResources(sys.argv[1],sys.argv[3])
 		submitting(submitDict, sys.argv[2])
 		print '## Done'
 	except:

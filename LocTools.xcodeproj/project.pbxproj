@@ -18,12 +18,18 @@
 		8401603719136C6700B942A9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8401603519136C6700B942A9 /* InfoPlist.strings */; };
 		8401603919136C6700B942A9 /* LocToolsTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 8401603819136C6700B942A9 /* LocToolsTests.m */; };
 		8405BADA191715D60018D504 /* App.icns in Resources */ = {isa = PBXBuildFile; fileRef = 8405BAD9191715D60018D504 /* App.icns */; };
+		8408FD5E1AADB3BB00A73F03 /* warning.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8408FD5D1AADB3BB00A73F03 /* warning.plist */; };
+		8408FD601AAE760700A73F03 /* ftpDir.py in Resources */ = {isa = PBXBuildFile; fileRef = 8408FD5F1AAE760700A73F03 /* ftpDir.py */; };
+		840AF30E1AAED84D00A28D6C /* AAflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30B1AAED84D00A28D6C /* AAflverifier */; };
+		840AF30F1AAED84D00A28D6C /* AAflverifier_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */; };
+		840AF3101AAED84D00A28D6C /* AALocCommand in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30D1AAED84D00A28D6C /* AALocCommand */; };
+		840AF3141AAEF46B00A28D6C /* ScanReports.py in Resources */ = {isa = PBXBuildFile; fileRef = 840AF3131AAEF46B00A28D6C /* ScanReports.py */; };
+		840AF3301AAFD4D500A28D6C /* ftpSubmitter.py in Resources */ = {isa = PBXBuildFile; fileRef = 840AF32F1AAFD4D500A28D6C /* ftpSubmitter.py */; };
 		841E281419D6591F007908F8 /* iTunes_itxib_tool.pl in Resources */ = {isa = PBXBuildFile; fileRef = 841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */; };
 		841F57A4191BA31A0002A145 /* firstopen.py in Resources */ = {isa = PBXBuildFile; fileRef = 841F579D191BA31A0002A145 /* firstopen.py */; };
 		843121DC192460960096048C /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 843121DB192460960096048C /* Credits.rtf */; };
 		843121DD192460960096048C /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 843121DB192460960096048C /* Credits.rtf */; };
 		84329BA219AF03B70016C343 /* xliffdiffer.py in Resources */ = {isa = PBXBuildFile; fileRef = 84329BA019AF03B70016C343 /* xliffdiffer.py */; };
-		8432B5F019B566CB00C8B7EE /* AAflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 8432B5EE19B566CB00C8B7EE /* AAflverifier */; };
 		8432B5F119B566CB00C8B7EE /* AALocUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */; };
 		8433121C1A43F47200A03876 /* makeautoFtp_plus.pl in Resources */ = {isa = PBXBuildFile; fileRef = 8433121B1A43F47200A03876 /* makeautoFtp_plus.pl */; };
 		84370E6519D3FB0900D65F17 /* iTunes_itxib_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = 84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */; };
@@ -37,9 +43,7 @@
 		84580C5819D3AB2300D059AE /* createCompareFolder.sh in Resources */ = {isa = PBXBuildFile; fileRef = 84580C5719D3AB2300D059AE /* createCompareFolder.sh */; };
 		845D74651A845A5700E4D469 /* AALocEnvUtilities.pm in Resources */ = {isa = PBXBuildFile; fileRef = 845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */; };
 		845F417C19D0131A00333A71 /* Temp_CheckAllPro.py in Resources */ = {isa = PBXBuildFile; fileRef = 845F417B19D0131A00333A71 /* Temp_CheckAllPro.py */; };
-		845F418119D0176E00333A71 /* AAflverifier_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 845F417D19D0176E00333A71 /* AAflverifier_Pro */; };
 		845F418219D0176E00333A71 /* AAflverifierFilter_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */; };
-		845F418319D0176E00333A71 /* AALocCommand in Resources */ = {isa = PBXBuildFile; fileRef = 845F417F19D0176E00333A71 /* AALocCommand */; };
 		8462917C19D194BF00A0BA38 /* finaltest.py in Resources */ = {isa = PBXBuildFile; fileRef = 8462917B19D194BF00A0BA38 /* finaltest.py */; };
 		846C8A0319AC15C2006C377D /* Envtester.py in Resources */ = {isa = PBXBuildFile; fileRef = 846C8A0219AC15C2006C377D /* Envtester.py */; };
 		846C8A0519AC15C7006C377D /* ComponentData.py in Resources */ = {isa = PBXBuildFile; fileRef = 846C8A0419AC15C7006C377D /* ComponentData.py */; };
@@ -98,7 +102,6 @@
 		84C560B619D2E8B100A3E9A6 /* alert.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 84C560B519D2E8B100A3E9A6 /* alert.jpg */; };
 		84CB2BC1191CC70D007B8D15 /* notice.py in Resources */ = {isa = PBXBuildFile; fileRef = 84CB2BC0191CC70D007B8D15 /* notice.py */; };
 		84DD6F621A805CE800EDE3A3 /* parameterstester.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F611A805CE800EDE3A3 /* parameterstester.py */; };
-		84DD6F661A805D1400EDE3A3 /* ScanReports.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F651A805D1400EDE3A3 /* ScanReports.py */; };
 		84DD6F681A805D3B00EDE3A3 /* ProAppDitto.py in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F671A805D3B00EDE3A3 /* ProAppDitto.py */; };
 		84DD6F6A1A80730600EDE3A3 /* countrySelect.plist in Resources */ = {isa = PBXBuildFile; fileRef = 84DD6F691A80730600EDE3A3 /* countrySelect.plist */; };
 		84F5DA9A19152DF400A265D1 /* LocTools-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 84F5DA9919152DF400A265D1 /* LocTools-Info.plist */; };
@@ -139,12 +142,18 @@
 		8401603619136C6700B942A9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		8401603819136C6700B942A9 /* LocToolsTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LocToolsTests.m; sourceTree = "<group>"; };
 		8405BAD9191715D60018D504 /* App.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = App.icns; sourceTree = "<group>"; };
+		8408FD5D1AADB3BB00A73F03 /* warning.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = warning.plist; sourceTree = "<group>"; };
+		8408FD5F1AAE760700A73F03 /* ftpDir.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ftpDir.py; sourceTree = "<group>"; };
+		840AF30B1AAED84D00A28D6C /* AAflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier; sourceTree = "<group>"; };
+		840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier_Pro; sourceTree = "<group>"; };
+		840AF30D1AAED84D00A28D6C /* AALocCommand */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand; sourceTree = "<group>"; };
+		840AF3131AAEF46B00A28D6C /* ScanReports.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ScanReports.py; sourceTree = "<group>"; };
+		840AF32F1AAFD4D500A28D6C /* ftpSubmitter.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ftpSubmitter.py; sourceTree = "<group>"; };
 		841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = iTunes_itxib_tool.pl; sourceTree = "<group>"; };
 		841F579D191BA31A0002A145 /* firstopen.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = firstopen.py; sourceTree = "<group>"; };
 		842B04BD19D036DD0080D369 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
 		843121DB192460960096048C /* Credits.rtf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		84329BA019AF03B70016C343 /* xliffdiffer.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = xliffdiffer.py; sourceTree = "<group>"; };
-		8432B5EE19B566CB00C8B7EE /* AAflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier; sourceTree = "<group>"; };
 		8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocUtilities.pm; sourceTree = "<group>"; };
 		8433121B1A43F47200A03876 /* makeautoFtp_plus.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = makeautoFtp_plus.pl; sourceTree = "<group>"; };
 		84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = iTunes_itxib_tool.py; sourceTree = "<group>"; };
@@ -158,9 +167,7 @@
 		84580C5719D3AB2300D059AE /* createCompareFolder.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = createCompareFolder.sh; sourceTree = "<group>"; };
 		845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocEnvUtilities.pm; sourceTree = "<group>"; };
 		845F417B19D0131A00333A71 /* Temp_CheckAllPro.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Temp_CheckAllPro.py; sourceTree = "<group>"; };
-		845F417D19D0176E00333A71 /* AAflverifier_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier_Pro; sourceTree = "<group>"; };
 		845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifierFilter_Pro; sourceTree = "<group>"; };
-		845F417F19D0176E00333A71 /* AALocCommand */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand; sourceTree = "<group>"; };
 		8462917B19D194BF00A0BA38 /* finaltest.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = finaltest.py; sourceTree = "<group>"; };
 		846C8A0219AC15C2006C377D /* Envtester.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = Envtester.py; sourceTree = "<group>"; };
 		846C8A0419AC15C7006C377D /* ComponentData.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ComponentData.py; sourceTree = "<group>"; };
@@ -220,7 +227,6 @@
 		84C560B519D2E8B100A3E9A6 /* alert.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = alert.jpg; sourceTree = "<group>"; };
 		84CB2BC0191CC70D007B8D15 /* notice.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = notice.py; sourceTree = "<group>"; };
 		84DD6F611A805CE800EDE3A3 /* parameterstester.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = parameterstester.py; sourceTree = "<group>"; };
-		84DD6F651A805D1400EDE3A3 /* ScanReports.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ScanReports.py; sourceTree = "<group>"; };
 		84DD6F671A805D3B00EDE3A3 /* ProAppDitto.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ProAppDitto.py; sourceTree = "<group>"; };
 		84DD6F691A80730600EDE3A3 /* countrySelect.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = countrySelect.plist; sourceTree = "<group>"; };
 		84F5DA9919152DF400A265D1 /* LocTools-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "LocTools-Info.plist"; sourceTree = "<group>"; };
@@ -308,6 +314,7 @@
 				8401602119136C6700B942A9 /* AppDelegate.m */,
 				84931651191A6F0A00629D01 /* MainMenu.xib */,
 				84DD6F691A80730600EDE3A3 /* countrySelect.plist */,
+				8408FD5D1AADB3BB00A73F03 /* warning.plist */,
 				8401602619136C6700B942A9 /* Images.xcassets */,
 				8401601519136C6700B942A9 /* Supporting Files */,
 			);
@@ -361,6 +368,7 @@
 		844A9ED219185EAB0060252D /* python */ = {
 			isa = PBXGroup;
 			children = (
+				8408FD5F1AAE760700A73F03 /* ftpDir.py */,
 				840115A21AA35AE100CB606A /* findIDAndRect.py */,
 				846C8A0419AC15C7006C377D /* ComponentData.py */,
 				846C8A0219AC15C2006C377D /* Envtester.py */,
@@ -368,8 +376,9 @@
 				8462917B19D194BF00A0BA38 /* finaltest.py */,
 				84370E6419D3FB0900D65F17 /* iTunes_itxib_tool.py */,
 				84812A2619F7887A00D195DA /* Envtester_new.py */,
-				84DD6F651A805D1400EDE3A3 /* ScanReports.py */,
 				84C560B319D2654900A3E9A6 /* autoFtp.py */,
+				840AF3131AAEF46B00A28D6C /* ScanReports.py */,
+				840AF32F1AAFD4D500A28D6C /* ftpSubmitter.py */,
 				848B2A921A80AC170037DAB8 /* PCXPlugins.py */,
 				847D4AD719D954A9003EB7FF /* client.py */,
 				84329BA019AF03B70016C343 /* xliffdiffer.py */,
@@ -422,13 +431,13 @@
 				84931493191A649500629D01 /* AADNT */,
 				84931494191A649500629D01 /* AAExpandPackage */,
 				84931495191A649500629D01 /* AAExpandTarballs */,
-				8432B5EE19B566CB00C8B7EE /* AAflverifier */,
 				8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */,
 				84931496191A649500629D01 /* AAExtractAttributedStrings */,
 				84931497191A649500629D01 /* AAExtractNib */,
-				845F417D19D0176E00333A71 /* AAflverifier_Pro */,
+				840AF30B1AAED84D00A28D6C /* AAflverifier */,
+				840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */,
+				840AF30D1AAED84D00A28D6C /* AALocCommand */,
 				845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */,
-				845F417F19D0176E00333A71 /* AALocCommand */,
 				84370E6819D42FBB00D65F17 /* AALocCommand_Org */,
 				84931499191A649500629D01 /* AAflverifierFilter */,
 				845D74641A845A5700E4D469 /* AALocEnvUtilities.pm */,
@@ -561,8 +570,8 @@
 				84931579191A649600629D01 /* AADNT in Resources */,
 				849315E0191A649600629D01 /* IBLock in Resources */,
 				84931652191A6F0A00629D01 /* MainMenu.xib in Resources */,
+				8408FD5E1AADB3BB00A73F03 /* warning.plist in Resources */,
 				849315D3191A649600629D01 /* fpcx in Resources */,
-				845F418319D0176E00333A71 /* AALocCommand in Resources */,
 				84931580191A649600629D01 /* AAinsight2wg in Resources */,
 				84CB2BC1191CC70D007B8D15 /* notice.py in Resources */,
 				8457CC51192F320300D94999 /* bugfixcomments.py in Resources */,
@@ -570,6 +579,7 @@
 				843121DC192460960096048C /* Credits.rtf in Resources */,
 				84F5DA9A19152DF400A265D1 /* LocTools-Info.plist in Resources */,
 				84931613191A649600629D01 /* ReportChecker in Resources */,
+				8408FD601AAE760700A73F03 /* ftpDir.py in Resources */,
 				849315EC191A649600629D01 /* Loc.pm in Resources */,
 				84931581191A649600629D01 /* AALocAppleGlotUtilities.pm in Resources */,
 				849315B5191A649600629D01 /* ComponentListLocEnv in Resources */,
@@ -584,7 +594,6 @@
 				84F7528B19C2A25100E32E37 /* Temp_CheckTar.py in Resources */,
 				849315BB191A649600629D01 /* cplproj in Resources */,
 				8451C0ED1A44097B0052C577 /* xliffdiffer_lite.py in Resources */,
-				8432B5F019B566CB00C8B7EE /* AAflverifier in Resources */,
 				84931575191A649600629D01 /* AACheckNotTranslatedString in Resources */,
 				847D4AD819D954A9003EB7FF /* client.py in Resources */,
 				8493158B191A649600629D01 /* AANibImageRiper in Resources */,
@@ -615,22 +624,25 @@
 				84429E6F19E7B88A007BAD81 /* xliffState.py in Resources */,
 				84931595191A649600629D01 /* Alter.pl in Resources */,
 				84931596191A649600629D01 /* Alter.pm in Resources */,
-				845F418119D0176E00333A71 /* AAflverifier_Pro in Resources */,
 				845F417C19D0131A00333A71 /* Temp_CheckAllPro.py in Resources */,
+				840AF30E1AAED84D00A28D6C /* AAflverifier in Resources */,
 				8493157D191A649600629D01 /* AAExtractNib in Resources */,
 				84580C5619D39E8E00D059AE /* createFolder.sh in Resources */,
 				84931643191A649600629D01 /* verificator in Resources */,
 				84931592191A649600629D01 /* AAXliffUtilities.pm in Resources */,
+				840AF3141AAEF46B00A28D6C /* ScanReports.py in Resources */,
 				840115A31AA35AE100CB606A /* findIDAndRect.py in Resources */,
+				840AF30F1AAED84D00A28D6C /* AAflverifier_Pro in Resources */,
 				84370E6B19D43C4800D65F17 /* printXcodePath.sh in Resources */,
 				84DD6F681A805D3B00EDE3A3 /* ProAppDitto.py in Resources */,
+				840AF3101AAED84D00A28D6C /* AALocCommand in Resources */,
 				84370E6519D3FB0900D65F17 /* iTunes_itxib_tool.py in Resources */,
 				84931577191A649600629D01 /* AACleanupTier3NewLoc in Resources */,
-				84DD6F661A805D1400EDE3A3 /* ScanReports.py in Resources */,
 				84931570191A649600629D01 /* AAad2insight in Resources */,
 				845F418219D0176E00333A71 /* AAflverifierFilter_Pro in Resources */,
 				849315F4191A649600629D01 /* MaskNumberAndCountryInTar.pl in Resources */,
 				849315FF191A649600629D01 /* Pcx.pm in Resources */,
+				840AF3301AAFD4D500A28D6C /* ftpSubmitter.py in Resources */,
 				84370E6919D42FBB00D65F17 /* AALocCommand_Org in Resources */,
 				8432B5F119B566CB00C8B7EE /* AALocUtilities.pm in Resources */,
 			);

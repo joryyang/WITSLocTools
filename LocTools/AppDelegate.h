@@ -48,6 +48,9 @@
 @property (strong) IBOutlet NSWindow *alertWindow;
 @property (strong) IBOutlet NSWindow *clippingResult;
 
+@property (strong) IBOutlet NSWindow *submitWindow;
+@property (strong) IBOutlet NSWindow *warningWindow;
+
 @property (strong) IBOutlet NSPopUpButton *AAdirector;
 @property (strong) IBOutlet NSTextView *bugFixList;
 
@@ -62,6 +65,12 @@
 @property (strong) IBOutlet NSTextView *clippingLog;
 
 @property (strong) IBOutlet NSButton *AGCheckBox;
+@property (strong) IBOutlet NSPopUpButton *submitPop;
+@property (weak) IBOutlet NSPopUpButton *prePop;
+@property (strong) IBOutlet NSTextField *folderField;
+@property (strong) IBOutlet NSTextField *warningLog;
+@property (strong) IBOutlet NSProgressIndicator *submissionProgress;
+
 
 /*Action*/
 - (IBAction)ShowMainItem:(id)sender;
@@ -81,6 +90,11 @@
 - (IBAction)AGCancelAction:(id)sender;
 - (IBAction)AGContinueAction:(id)sender;
 - (IBAction)checkClipping:(id)sender;
+- (IBAction)cancelSubmit:(id)sender;
+- (IBAction)conitnueSubmit:(id)sender;
+- (IBAction)warningCancel:(id)sender;
+- (IBAction)warningContinue:(id)sender;
+- (IBAction)selectSubmitPop:(id)sender;
 
 
 

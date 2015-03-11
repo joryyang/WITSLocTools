@@ -80,6 +80,8 @@
     
     /*************************************************/
     _AGState=-1;
+    [_submissionProgress setHidden:YES];
+    _warningWindow.backgroundColor=[NSColor yellowColor];
 }
 
 -(void)timerNotice
@@ -264,8 +266,6 @@
 - (IBAction)canISubmit:(id)sender {
     _reportLog.string=@"";
     NSArray *langs=[NSArray arrayWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"countrySelect" ofType:@"plist"]];
-    _canISubmitPanel.isVisible=YES;
-    NSString *command=@"ScanReports.py";
     NSString *reportPath=nil;
     NSString *projPathTemp=[NSString stringWithFormat:@"%@/%@/%@/LocEnv",_mainPath,[_MainItem title],[_SubItem title]];
     _fileManager=[NSFileManager defaultManager];
@@ -279,11 +279,79 @@
             }
         }
     }
-//    NSLog(@"%@",reportPath);
+    
     NSArray *arguments=[NSArray arrayWithObjects:reportPath, nil];
-    [self runingProgressOne:command andArguments:arguments];
+    NSString *message=[self getResultStringsByTask:@"ScanReports.py" andArgument:arguments];
+    NSInteger count=0;
+    count=[self CountNumberStrings:message andtarget:@"No problem found"];
+    if (count>=3) {
+        NSString *result=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:@"isnil", nil]];
+        NSArray *items=[result componentsSeparatedByString:@"\n"];
+        NSMutableArray *projs=[NSMutableArray array];
+        for(NSString *str in items){
+            if (![str isEqualToString:@""]) {
+                [projs addObject:str];
+            }
+        }
+        [_submitPop removeAllItems];
+        [_submitPop addItemsWithTitles:projs];
+        NSString *selectProj=[_submitPop title];
+        NSArray *aa=[selectProj componentsSeparatedByString:@" "];
+        NSString *final=@"";
+        for(NSString *bb in aa){
+            if ([final isEqualToString:@""]) {
+                final=bb;
+            }
+            else{
+                final=[NSString stringWithFormat:@"%@%@%@",final,@"%",bb];
+            }
+        }
+        NSArray *arguments=[NSArray arrayWithObjects:final, nil];
+        NSString *subItems=[self getResultStringsByTask:@"ftpDir.py" andArgument:arguments];
+        NSArray *cc1=[subItems componentsSeparatedByString:@"\n"];
+        NSMutableArray *cc2=[NSMutableArray array];
+        for(NSString *cc3 in cc1){
+            if (![cc3 isEqualToString:@""] && ![cc3 isEqualToString:@"time out"]) {
+                [cc2 addObject:cc3];
+            }
+        }
+        [_prePop removeAllItems];
+        [_prePop addItemsWithTitles:cc2];
+        [NSApp runModalForWindow:_submitWindow];
+    }
+    else{
+        _canISubmitPanel.isVisible=YES;
+        _reportLog.string=message;
+    }
 }
 
+-(NSString *)getResultStringsByTask:(NSString *)command andArgument:(NSArray *)argument
+{
+    NSString *resourcePath=[[NSBundle mainBundle]resourcePath];
+    NSString *command1=[NSString stringWithFormat:@"%@/%@",resourcePath,command];
+    NSTask *task=[[NSTask alloc]init];
+    [task setLaunchPath:command1];
+    [task setArguments:argument];
+    NSPipe *readPipe=[NSPipe pipe];
+    [task setStandardOutput:readPipe];
+    NSFileHandle *file=[readPipe fileHandleForReading];
+    [task launch];
+    NSData *data=[file readDataToEndOfFile];
+    return [[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
+}
+
+-(NSInteger)CountNumberStrings:(NSString *)source andtarget:(NSString *)target
+{
+    if ([source isEqualToString:@""]) {
+        return 0;
+    }
+    else{
+        NSRegularExpression *regular=[NSRegularExpression regularExpressionWithPattern:target options:0 error:nil];
+        NSArray *mathes=[NSArray array];
+        mathes=[regular matchesInString:source options:0 range:NSMakeRange(0, source.length)];
+        return mathes.count;
+    }
+}
 
 -(void)AutoFtpProgress
 {
@@ -395,15 +463,44 @@
     return true;
 }
 
+-(NSArray *)compareDict:(NSDictionary *)source inArr:(NSArray *)target
+{
+    NSMutableArray *result=[NSMutableArray array];
+    NSArray *arr=[source allKeys];
+    for(NSString *str in target){
+        for(NSString *ss in arr){
+            if ([str hasPrefix:ss]) {
+                [result addObject:ss];
+            }
+        }
+    }
+    return result;
+}
+
 -(void)RunCheckLocEnv
 {
-    NSString *command=@"Temp_LocEnv.py";
-    NSArray *arguments=[NSArray arrayWithObjects:[NSString stringWithFormat:@"%@/%@",_resourcePath,@"AALocCommand"],@"-checkConductorLocEnv",@"-locenv",_glotPath, nil];
-    [self runingProgress:command andArguments:arguments];
-    
-    NSString *command1=@"client.py";
-    NSArray *arguments1=[NSArray arrayWithObjects:_projPath,@"CheckLocEnv_UI", nil];
-    [self runingProgress:command1 andArguments:arguments1];
+    NSDictionary *warnings=[NSDictionary dictionaryWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"warning" ofType:@"plist"]];
+    NSString *componentPath=[NSString stringWithFormat:@"%@/%@/GlotEnvKit_Archive",_mainPath,[_MainItem title]];
+    NSArray *components=[_fileManager contentsOfDirectoryAtPath:componentPath error:nil];
+    NSArray *result=[self compareDict:warnings inArr:components];
+    if (result.count!=0) {
+        NSString *tt=@"";
+        for(NSString *str in result){
+            NSString *temp=[NSString stringWithFormat:@"%@\n\n",[warnings objectForKey:str]];
+            tt=[NSString stringWithFormat:@"%@%@",tt,temp];
+        }
+        _warningLog.stringValue=tt;
+        [NSApp runModalForWindow:_warningWindow];
+    }
+    else{
+        NSString *command=@"Temp_LocEnv.py";
+        NSArray *arguments=[NSArray arrayWithObjects:[NSString stringWithFormat:@"%@/%@",_resourcePath,@"AALocCommand"],@"-checkConductorLocEnv",@"-locenv",_glotPath, nil];
+        [self runingProgress:command andArguments:arguments];
+        
+        NSString *command1=@"client.py";
+        NSArray *arguments1=[NSArray arrayWithObjects:_projPath,@"CheckLocEnv_UI", nil];
+        [self runingProgress:command1 andArguments:arguments1];
+    }
 }
 
 -(void)RunXliffDiffer
@@ -490,11 +587,10 @@
     int sum1=0;
     int sum2=0;
     int sum3=0;
-    NSString *tarballPath=nil;
+    NSString *tarballPath=@"";
     NSMutableArray *mArray=[NSMutableArray array];
     NSArray *finalArray=[NSArray array];
     NSString *projPathTemp=[NSString stringWithFormat:@"%@/%@/%@/LocEnv",_mainPath,[_MainItem title],[_SubItem title]];
-    _fileManager=[NSFileManager defaultManager];
     NSArray *array=[_fileManager contentsOfDirectoryAtPath:projPathTemp error:nil];
     for(NSString *str in array){
         if ([str hasPrefix:@"TarOut"]) {
@@ -837,6 +933,78 @@
         [_clippingLog insertText:@"\n"];
         [_clippingLog insertText:@"\n"];
     }
+}
+
+- (IBAction)cancelSubmit:(id)sender {
+    [_submissionProgress setHidden:YES];
+    [NSApp stopModal];
+    [_submitWindow orderOut:sender];
+}
+
+- (IBAction)conitnueSubmit:(id)sender {
+    [_submissionProgress setHidden:NO];
+    [_submissionProgress startAnimation:sender];
+    NSString *locPath=[NSString stringWithFormat:@"%@/%@/%@/LocEnv",_mainPath,[_MainItem title],[_SubItem title]];
+    NSString *subPath=[NSString stringWithFormat:@"//SoftwareDev/%@/%@",[_submitPop title],[_prePop title]];
+    NSArray *argument=[NSArray array];
+    if ([_folderField.stringValue isEqualToString:@""]) {
+        argument=[NSArray arrayWithObjects:locPath,subPath, nil];
+    }
+    else{
+        argument=[NSArray arrayWithObjects:locPath,subPath,_folderField.stringValue, nil];
+    }
+    NSString *result=[self getResultStringsByTask:@"ftpSubmitter.py" andArgument:argument];
+    NSRange range=[result rangeOfString:@"## Done"];
+    if (range.location!=NSNotFound) {
+        [_submissionProgress stopAnimation:sender];
+        [_submissionProgress setHidden:YES];
+        [NSApp stopModal];
+        [_submitWindow orderOut:sender];
+        NSRunAlertPanel(@"提示信息", @"提交成功", @"确定", @"", nil);
+    }
+    else{
+        [_submissionProgress stopAnimation:sender];
+        [_submissionProgress setHidden:YES];
+        [NSApp stopModal];
+        [_submitWindow orderOut:sender];
+        NSRunAlertPanel(@"提示信息", @"提交失败", @"确定", @"", nil);
+    }
+}
+
+-(void)complementSubmition
+{
+    
+}
+
+- (IBAction)warningCancel:(id)sender {
+    [NSApp stopModal];
+    [_warningWindow orderOut:sender];
+}
+
+- (IBAction)warningContinue:(id)sender {
+    [NSApp stopModal];
+    [_warningWindow orderOut:sender];
+    NSString *command=@"Temp_LocEnv.py";
+    NSArray *arguments=[NSArray arrayWithObjects:[NSString stringWithFormat:@"%@/%@",_resourcePath,@"AALocCommand"],@"-checkConductorLocEnv",@"-locenv",_glotPath, nil];
+    [self runingProgress:command andArguments:arguments];
+    
+    NSString *command1=@"client.py";
+    NSArray *arguments1=[NSArray arrayWithObjects:_projPath,@"CheckLocEnv_UI", nil];
+    [self runingProgress:command1 andArguments:arguments1];
+}
+
+- (IBAction)selectSubmitPop:(id)sender {
+    NSString *item=[_submitPop title];
+    NSString *str=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:item, nil]];
+    NSArray *arr=[str componentsSeparatedByString:@"\n"];
+    NSMutableArray *arr1=[NSMutableArray array];
+    for(NSString *temp in arr){
+        if (![temp isEqualToString:@""] &&![temp isEqualToString:@"time out"]) {
+            [arr1 addObject:temp];
+        }
+    }
+    [_prePop removeAllItems];
+    [_prePop addItemsWithTitles:arr1];
 }
 
 -(NSString *)checkIfIsClipping:(NSArray *)arr

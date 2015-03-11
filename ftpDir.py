@@ -15,6 +15,7 @@ def listFtpDir(server='10.4.1.13', ftpDir=''):
 	except ftplib.error_perm, e:
 		print e
 	if ftpDir:
+		ftpDir=ftpDir.replace("%"," ")
 		try:
 			root = '//SoftwareDev/%s/Software_Develop/'%ftpDir
 			ftp.cwd(root)
@@ -28,11 +29,10 @@ def listFtpDir(server='10.4.1.13', ftpDir=''):
 	return [i for i in dirList if i != '_DONE_TO_BE_KILLED']
 
 if __name__ == '__main__':
-	ftpDir = sys.argv[1] if len(sys.argv) == 2 else ''
-	s = listFtpDir(ftpDir=ftpDir)
-	if ftpDir:
-		for i in s[-2:]:
-			print i
+	if sys.argv[1] == "isnil":
+		ftpDir = ""
 	else:
-		for i in s:
-			print i
+		ftpDir = sys.argv[1]
+	s = listFtpDir("10.4.1.13",ftpDir)
+	for i in s:
+		print i
