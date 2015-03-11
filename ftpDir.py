@@ -3,7 +3,15 @@
 
 __author__ = 'Tinyliu@wistronits.com, tinyliu@me.com'
 
-import ftplib, socket, sys
+import ftplib, socket, sys, urllib2, os, json
+
+def getSubmissionPair(url='http://10.4.2.6/ProjForFTP'):
+	try:
+		response = urllib2.urlopen(url, timeout = 5)
+		projDict = json.loads(response.read())
+		return projDict
+	except:
+		return {}
 
 def listFtpDir(server='10.4.1.13', ftpDir=''):
 	ftp = ftplib.FTP()
@@ -29,8 +37,19 @@ def listFtpDir(server='10.4.1.13', ftpDir=''):
 	return [i for i in dirList if i != '_DONE_TO_BE_KILLED']
 
 if __name__ == '__main__':
-	if sys.argv[1] == "isnil":
-		ftpDir = ""
+	if os.path.basename(sys.argv[1]) == 'LocEnv':
+		currentSub = getSubmissionPair()
+		if currentSub:
+			for key in currentSub:
+				if key in sys.argv[1]:
+					if isinstance(currentSub[key], list):
+						for i in currentSub[key]:
+							print i
+					else:
+						print currentSub[key]
+			sys.exit()
+		else:
+			ftpDir = ''
 	else:
 		ftpDir = sys.argv[1]
 	s = listFtpDir("10.4.1.13",ftpDir)

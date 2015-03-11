@@ -285,7 +285,7 @@
     NSInteger count=0;
     count=[self CountNumberStrings:message andtarget:@"No problem found"];
     if (count>=3) {
-        NSString *result=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:@"isnil", nil]];
+        NSString *result=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:projPathTemp, nil]];
         NSArray *items=[result componentsSeparatedByString:@"\n"];
         NSMutableArray *projs=[NSMutableArray array];
         for(NSString *str in items){
