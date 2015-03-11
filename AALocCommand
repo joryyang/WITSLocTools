@@ -756,6 +756,17 @@ my $gflidentifierPath = '/Developer/Evolution/LocEnv/locbin/flidentifier';
 # my $gSudoPath = "/usr/bin/sudo";
 my $gSudoPath = $gScriptPath . "sudo";
 
+unless (-d "/tmp/AALocBench")
+{
+	mkdir "/tmp/AALocBench";
+}
+
+unless (-d "/tmp/AALocBench/Compare")
+{
+	mkdir "/tmp/AALocBench/Compare";
+	mkdir "/tmp/AALocBench/Compare/Old";
+	mkdir "/tmp/AALocBench/Compare/New";
+}
 
 
 #---------------------------------------------------------------------------------------------
@@ -805,7 +816,7 @@ use constant kRunXliff				=> 1;
 #=============================================================================================
 
 # set version string
-$version = "1.9.9";
+$version = "2.0";
 
 %gFindLanguageResult = ();
 
@@ -1474,7 +1485,7 @@ elsif ($optionAACheckAll)
 		if (-d $gAGEnvironmentPath)
 		{
 			AACheckLocFiles($gAGEnvironmentPath);
-			CheckNibFiles($gAGEnvironmentPath, kAll);
+			# CheckNibFiles($gAGEnvironmentPath, kAll);
 			# AutoLayoutScore($gAGEnvironmentPath, "");
 			AAFLVerifier($gAGEnvironmentPath);
 		}
@@ -1510,12 +1521,12 @@ elsif ($optionAACheckAll)
 				if (-d $appleGlotEnvPath)
 				{
 					AACheckLocFiles($appleGlotEnvPath);
-					CheckNibFiles($appleGlotEnvPath, kAll);
+					# CheckNibFiles($appleGlotEnvPath, kAll);
 					# AutoLayoutScore($appleGlotEnvPath, "");
 					AAFLVerifier($appleGlotEnvPath);
 
 					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_flverifierReport.txt", kOpen);
-					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkNibFilesLog.txt", kOpen);
+					#AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkNibFilesLog.txt", kOpen);
 					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkLocFilesLog.txt", kOpen);
 					
 					if ($gCurrentLocEnvType != AALocEnvUtilities::kConductorLocEnv)
@@ -1558,7 +1569,7 @@ elsif ($optionAACheckAll_Pro)
 		if (-d $gAGEnvironmentPath)
 		{
 			AACheckLocFiles($gAGEnvironmentPath);
-		     CheckNibFiles($gAGEnvironmentPath, kAll);
+		    # CheckNibFiles($gAGEnvironmentPath, kAll);
 			# AutoLayoutScore($gAGEnvironmentPath, "");
 			AAFLVerifier_Pro($gAGEnvironmentPath);
 		}
@@ -1594,13 +1605,13 @@ elsif ($optionAACheckAll_Pro)
 				if (-d $appleGlotEnvPath)
 				{
 					AACheckLocFiles($appleGlotEnvPath);
-					CheckNibFiles($appleGlotEnvPath, kAll);
+					# CheckNibFiles($appleGlotEnvPath, kAll);
 					# AutoLayoutScore($appleGlotEnvPath, "");
 					#print "4444444444\n";
 					AAFLVerifier_Pro($appleGlotEnvPath);
 
 					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_flverifierReport_Pro.txt", kOpen);
-					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkNibFilesLog.txt", kOpen);
+					# AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkNibFilesLog.txt", kOpen);
 					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkLocFilesLog.txt", kOpen);
 					
 					if ($gCurrentLocEnvType != AALocEnvUtilities::kConductorLocEnv)
@@ -1608,7 +1619,7 @@ elsif ($optionAACheckAll_Pro)
 						AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_checkADFilesLog.txt", kOpen);
 					}
 
-					print "aaaaaaaaaaaaaaa\n";
+					#print "aaaaaaaaaaaaaaa\n";
 					FilterFLVerifierReport_Pro($locenv, "");
 					AALocEnvUtilities::CopyReportFromAG2LocEnv($locenv, "_flverifierFilteredReport_Pro.txt", kOpen);
 				}
@@ -10434,6 +10445,45 @@ sub PowerCompareXliffFolder
 	@folder2SearchResult = grep { !/^\./} readdir(directory);
 	closedir(directory);
 	
+        my %hashfolder2;
+        my $missingstrings="";
+        my $stirngsSame="";
+        my $stirngsChange="";
+        my $MissingExtra="";
+        my $result="";
+        
+        foreach my $folderFile2 (@folder2SearchResult)
+        {
+            $hashfolder2{$folderFile2}=$folderFile2;
+        }
+        
+        foreach my $tempfile1 (@searchResult)
+        {
+            if (exists $hashfolder2{$tempfile1}) {
+                delete $hashfolder2{$tempfile1};
+            }
+            else
+            {
+                $missingstrings.=$tempfile1 . "\n";
+            }
+        }
+        
+        unless ($missingstrings eq "") {
+            $MissingExtra .= "=====================================\n" . "##Missing Xliff Files in New folder##\n" . $missingstrings . "=====================================\n";
+        }
+        
+        my $hashSize=keys %hashfolder2;
+        my $extraList="";
+        if ($hashSize >0) {
+            
+            foreach $key (sort keys %hashfolder2)
+            {
+                $extraList.=$key ."\n";
+            }
+            $MissingExtra .= "=====================================\n" . "##Extra Xliff Files in Old folder##\n" . $extraList . "=====================================\n";
+        }
+        
+        
 	foreach $file (@searchResult)
 	{
 		$xliffFile = $inFolder1 . $file;
@@ -10512,7 +10562,17 @@ sub PowerCompareXliffFolder
 				{
 					$fileResult = `$gPcxPath -ski -str -agg '$file1' '$file2'  | $gFpcxPath`;
 					
-					$result = $result . "\n" . $fileResult;
+                                        if ($fileResult =~/Changed/) {
+                                            
+                                            $stirngsChange.=$fileResult;
+                                            
+                                        }
+                                        else
+                                        {
+                                            $stirngsSame.="==>Identical: " . $componentName . "\n";
+                                        }
+                                        
+					#$result =$result  . $fileResult;
 				}
 
 				last;
@@ -10520,7 +10580,7 @@ sub PowerCompareXliffFolder
 		}
 	}
 	
-	
+	$result = $stirngsSame ."\n\n" . $MissingExtra ."\n\n" . $stirngsChange;
 	return $result;
 }
 
@@ -10542,6 +10602,7 @@ sub PowerCompareXliffFile
 	
 	$result = `$gPcxPath -ski -str -agg '$inFile1' '$inFile2'  | $gFpcxPath`;
 
+        
 	return $result;
 }
 
@@ -24366,7 +24427,7 @@ sub Loctar
 			}
 			
 			
-			my $metaData = `getExtraMetadata "$checkingFile"`;
+			my $metaData = `/usr/local/evolution/LocEnv/locbin/getExtraMetadata "$checkingFile"`;
 			
 			if ($metaData ne "")
 			{
@@ -25092,7 +25153,7 @@ sub CheckConductorTar
 		}
 		
 		
-		my $metaData = `getExtraMetadata "$checkingFile"`;
+		my $metaData = `/usr/local/evolution/LocEnv/locbin/getExtraMetadata "$checkingFile"`;
 		
 		if ($metaData ne "")
 		{
@@ -25100,6 +25161,14 @@ sub CheckConductorTar
 			system "echo '$metaData' >> $reportFilePath";
 			system "echo >> $reportFilePath";
 		}
+		
+
+	}
+	
+	if ((-s $resourcefile == 0) and $metaData eq "")
+	{
+		system "echo 'No Problem Found' >> $reportFilePath";
+
 	}
 	
 	
@@ -26325,10 +26394,10 @@ sub CompareFolder
 	my($inFolder1, $inFolder2) = @_;
 	
         my $mydate= strftime("%Y-%m-%d %H.%M.%S", localtime(time)); 
-	my $reportPathFile="/tmp/AALocBench/Compare/". $mydate . "_DifferReport.txt";
+	my $reportPathFile="/tmp/AALocBench/" . "_" . $mydate . "_DifferReport.txt";
         
     
-	`rm /tmp/AALocBench/Compare/*_DifferReport.txt`;
+	`rm /tmp/AALocBench/*_DifferReport.txt`;
 
 	#-----------------------------------------------------------------------------------------
 	#	Check input path
@@ -26362,16 +26431,16 @@ sub CompareFolder
 	{
 		if (-e "/AppleInternal/Developer/Plugins/ProKit.ibplugin")
 		{
-			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPluginsWithProKit" | $gFpcxPath -l -purl -fm`;
+			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPluginsWithProKit" | $gFpcxPath -v -purl -fm`;
 		}
 		else
 		{
-			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPlugins" | $gFpcxPath -l -purl -fm`;
+			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPlugins" | $gFpcxPath -v -purl -fm`;
 		}
 	}
 	else
 	{
-		$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" | $gFpcxPath -l -purl -fm`;
+		$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" | $gFpcxPath -v -purl -fm`;
 	}
 
 #	$reportPathFile=$result;
@@ -26396,9 +26465,9 @@ sub CompareFolder_Pro
 	
         
         my $mydate= strftime("%Y-%m-%d %H.%M.%S", localtime(time)); 
-	my $reportPathFile="/tmp/AALocBench/Compare/". $mydate . "_DifferReport.txt";
+	my $reportPathFile="/tmp/AALocBench/". "_" . $mydate . "_DifferReport.txt";
 	
-	`rm /tmp/AALocBench/Compare/*_DifferReport.txt`;
+	`rm /tmp/AALocBench/*_DifferReport.txt`;
 
 	#-----------------------------------------------------------------------------------------
 	#	Check input path
@@ -26431,11 +26500,11 @@ sub CompareFolder_Pro
 
 		if ((-e "/AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin") or  -e ("/AppleInternal/Developer/Plugins/ProKit.ibplugin"))
 		{
-			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "/AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin:/AppleInternal/Library/EmbeddedFrameworks/ProApps/IBPlugIns/LunaKitEmbedded.ibplugin" | $gFpcxPath -l -purl -fm`;
+			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "/AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin:/AppleInternal/Library/EmbeddedFrameworks/ProApps/IBPlugIns/LunaKitEmbedded.ibplugin" | $gFpcxPath -v -purl -fm`;
 		}
 		else
 		{
-			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPlugins" | $gFpcxPath -l -purl -fm`;
+			$result = `$gPcxPath '$inFolder1' '$inFolder2' -pc -ski -frmap -sniberr -p -nd -objinfo -faddrstr -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$)/;" -excld "m/~\\.nib\$/;" -flatten_plist -sksfmi -pnewfile -pobsfile -faddrstr -psummarydiff -cacheDir2 "~/Library/Caches/LocCache/nib" -ib_plugin "$gPCXIBPlugins" | $gFpcxPath -v -purl -fm`;
 		}
 
 

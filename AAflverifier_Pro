@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-
+#use strict;
 ##*****************************************************************************
 ##
 ##  Project Name:	AALocCommand
@@ -26,6 +26,7 @@
 ##
 ##	Date		Time	Author	Description
 ##	--------	-----	------	---------------------------------------------
+##	03/01/15	12:00	SA		version 1.3 Multiple processes
 ##	09/07/09	12:00	SA		version 1.1
 ##	09/07/09	12:00	SA		Use gIBPlugsPcxOptions for ibplugs and added Automator.ibplugin, QuicktimeKitUIPlugin, /Developer/Plugins/ServerKit.ibplugin
 ##	09/03/09	12:00	SA		version 1.0.9
@@ -81,7 +82,20 @@ use lib $FindBin::Bin;
 use Pcxout 1.01;
 use	Pcx 1.01;
 use utf8;
+use threads;
+use threads::shared;
+use POSIX qw(strftime);  
+use Encode;
+use Try::Tiny;
+
 no warnings;
+
+
+use DB_File;
+use IPC::SysV qw(IPC_PRIVATE S_IRWXU IPC_CREAT);
+use IPC::Semaphore;
+
+use POSIX ":sys_wait_h";
 
 
 ($scriptName = $0) =~ s|(.+)/([^/]+)$|$2|;
@@ -133,6 +147,46 @@ $gCompResult_OLNL = "";
 $gDontFormatCompResult = 0;
 $gDontListIdenticalInCompResult = 0;
 
+#
+my $a2out="";
+my $a3out="";
+my $b1out="";
+my $b3out="";
+my $c1out="";
+my $c2out="";
+my $d5out="";
+my $e4out="";
+
+
+##使用这个变量存储线程数量
+my $thread_num : shared = 0;
+my $FishCheckLK : shared="";
+my $FishCheckToal : shared=0;
+my %thread_content : shared = ();
+
+our $zombies = 0;
+our $procs = 0;
+
+
+
+## == number of proc ==
+my $num_proc = 0;
+ 
+## == number of collected ==
+my $num_collect = 0;
+ 
+my $collect;
+ 
+## == get the child signal ==
+#$SIG{CHLD} = sub { $num_proc-- };
+#$SIG{CHLD} = sub { $zombies++ };
+
+my $sem = IPC::Semaphore->new(7459, 1, S_IRWXU|IPC_CREAT)|| die "IPC::Semaphore->new: $!\n";
+$sem->setval(0,0) || die "sem setval: $!\n";
+
+
+#
+
 # SA	$gPcxPath = `which pcx`;
 # SA	chomp $gPcxPath;
 
@@ -159,7 +213,7 @@ unless (@ARGV > 1)
 {
 	if ($ARGV[0] eq "-getVersion")
 	{
-		print "1.2.2";
+		print "1.3";
 		exit 1;
 	}
 	else
@@ -425,6 +479,24 @@ else
 }
 
 
+#my $myoutTotal="";
+#foreach my $tempKey (sort keys %thread_content)
+#{
+#    $myoutTotal.=$thread_content{$tempKey};
+#}
+
+
+
+
+
+
+
+#print $OUT $myoutTotal;
+#print $OUT "\n\n=====================================================================================================\n";
+#print $OUT "Finish checked total component [$FishCheckToal]:";
+#print $OUT "\n=====================================================================================================\n";
+#print $OUT $FishCheckLK;
+#print $OUT "\n\n";
 
 #------------------------------------------------------------------------
 # Open the output shell script
@@ -481,6 +553,7 @@ exit 0;
 
 
 
+
 sub usage
 {
 	print "Usage: AAflverifier -glot glot_directory glot_directory_path -loc YOUR_LANGUAGE [-stdout|-adview|-bbedit] [-open] [-outfile output_file_path] [-dontFormatCompResult] [-dontListIdenticalInCompResult]\n";
@@ -521,7 +594,8 @@ sub preworkForCrosscomp1
 		{
 			push (@gIBPlugsPcxOptions, '-ib_plugin "/System/Library/Frameworks/AddressBook.framework/Versions/A/Resources/AddressBookIBPlugin.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/Automator.ibplugin:/System/Library/Frameworks/Automator.framework/Versions/A/Resources/AutomatorPalette.ibplugin:/System/Library/Frameworks/DiscRecordingUI.framework/Versions/A/Resources/DiscRecordingPlugin.ibplugin:/System/Library/Frameworks/OSAKit.framework/Versions/A/Resources/OSAIBPlugin.ibplugin:/System/Library/Frameworks/QTKit.framework/Versions/A/Resources/QTKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/ImageKit.framework/Versions/A/Resources/ImageKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/PDFKit.framework/Versions/A/Resources/PDFKitIBPlugin.ibplugin:/System/Library/Frameworks/Quartz.framework/Versions/A/Frameworks/QuartzComposer.framework/Versions/A/Resources/QuartzComposer.ibplugin:/System/Library/PrivateFrameworks/Assistant.framework/Versions/A/Resources/Assistant Plugin.ibplugin:/AppleInternal/Developer/Plugins/QuicktimeKitUIPlugin.ibplugin:/Developer/Plugins/ServerKit.ibplugin:/AppleInternal/Developer/Plugins/ProKit.ibplugin:/AppleInternal/Developer/Plugins/MAToolKitLogicIBPlugIn.ibplugin:/AppleInternal/Developer/Plugins/iLifeKitIBPlugin.ibplugin:/AppleInternal/Developer/Plugins/ImageKitIBPlugin.ibplugin:/AppleInternal/Developer/Plugins/QuicktimeKitUIPlugin.ibplugin:/AppleInternal/Developer/Plugins/ServerKit.ibplugin:/AppleInternal/Developer/Plugins/Automator.ibplugin:/AppleInternal/Developer/Plugins/AddressBookIBPlugin.ibplugin:/AppleInternal/Developer/Plugins/Assistant Plugin.ibplugin" ');
 		}
-	}	
+	}
+	
 	preworkForCrosscomp2(\%glotDirs);
 
 	# It seems that a localizer wants to check full compare result.
@@ -537,24 +611,24 @@ sub preworkForCrosscomp1
 		# asaka
 		unless ($gDontFormatCompResult)
 		{
-			$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions @gIBPlugsPcxOptions  -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
+			#$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions  -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
 		}
 		else
 		{
-			$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions @gIBPlugsPcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
+			#$ob_nb_comp_result = `$gPcxPath "$glotDirs{'oldbase'}" "$glotDirs{'newbase'}" -lproj "English.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
 		}
-		print $gOB_NB $ob_nb_comp_result;
+		#print $gOB_NB $ob_nb_comp_result;
 
 		unless ($gDontFormatCompResult)
 		{
-			$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions @gIBPlugsPcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
+			#$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist | $gFpcxPath -l -purl @fpcxOptions`;
 		}
 		else
 		{
-			$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions @gIBPlugsPcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
+			#$ol_nl_comp_result = `$gPcxPath "$glotDirs{'oldloc'}" "$glotDirs{'newloc'}" -lproj "$gLocLanguage.lproj" @pcxOptions -exclnibattr 'm/^(dataCell|NSTextFieldCell|layoutInfoCopy|IBCarbonHILayoutInfo|groupedIBObjectID|NSSegmentItem|NSProTextFieldCell|NSProSegmentItem|editorWindowContentRectSynchronizationRect|frameAutosaveName)\$/;' -exclf "m/(^\\.DS_Store\$\|\.nib\\.strings\$|^locversion\\.plist\$)/;" -excld "m/~\\.nib\$/;" -sktiff -faddrstr -sksfmi -flatten_plist`;
 		}
 		
-		print $gOL_NL $ol_nl_comp_result;
+		#print $gOL_NL $ol_nl_comp_result;
 	} 
 }
 
@@ -568,40 +642,249 @@ sub preworkForCrosscomp1
 #************************************************************
 sub preworkForCrosscomp2
 {
-	my $glotDirsRef = shift;
-	my %compDirs = ();
+    my $glotDirsRef = shift;
+    my %compDirs = ();
+    
+    
+    my @fileListAll=();
+    
+    ## == number of proc ==
+    my $num_proc = 0;
+     
+    ## == number of collected ==
+    my $num_collect = 0;
+     
+    my $collect;
+     
+    ## == get the child signal ==
+    $SIG{CHLD} = sub { $num_proc-- };
+    
+    #$SIG{CHLD} = sub { $zombies++ };
 
-	if (opendir (NEWBASE, $glotDirsRef->{"newbase"}))
+
+    #my $sem = IPC::Semaphore->new(7456, 1, S_IRWXU|IPC_CREAT)|| die "IPC::Semaphore->new: $!\n";
+    #
+    #$sem->setval(0,0) || die "sem setval: $!\n";
+    
+    #Got the logs finder.
+    my $log=$glotDirsRef->{newbase};
+       $log=~s/_NewBase//;
+       $log=$log."_Logs"."/"."Report_temp";
+    
+     unlink $log;
+    
+    
+    my $i=0;
+    #print localtime(time),"\n"; #输出系统时间；
+    
+    if (opendir (NEWBASE, $glotDirsRef->{"newbase"}))
+    {
+#	chdir $glotDirsRef->{"newbase"};
+	while (defined ($file = readdir NEWBASE))
 	{
-#		chdir $glotDirsRef->{"newbase"};
-		while (defined ($file = readdir NEWBASE))
+		next if ($file =~ m/^\./);
+		push (@fileListAll, $file);
+		
+	}
+	closedir NEWBASE;
+    
+	
+	my @threadsAll=();
+	
+	my $maxthread=20; ##允许开启线程最大数量
+	
+	for($i; $i<@fileListAll;$i++)
+	{
+
+	    if (-d "$glotDirsRef->{newbase}/$fileListAll[$i]")
+	    {
+		if (-e "$glotDirsRef->{newloc}/$fileListAll[$i]")
 		{
-			next if ($file =~ m/^\./);
+		    $compDirs{"newbase"} = "$glotDirsRef->{newbase}/$fileListAll[$i]";
+		    $compDirs{"newloc"} = "$glotDirsRef->{newloc}/$fileListAll[$i]";
+		    $compDirs{"oldbase"} = "$glotDirsRef->{oldbase}/$fileListAll[$i]";
+		    $compDirs{"oldloc"} = "$glotDirsRef->{oldloc}/$fileListAll[$i]";
+		    
+		    
+		    
+		    ## == fork a new process ==
+		     my $pid = fork();
+		     
+		    if (!defined($pid))
+		    {
+		       print "Error in fork: $!";
+		       exit 1;
+		    }
+		    
+		    if ($pid == 0) {
+		 
+			## == child proc ==
+			print "Child $i : My pid = $$\n";
 			
-			if (-d "$glotDirsRef->{newbase}/$file")
+			my $ii=$i+1;
+			crosscomp(\%compDirs,$log,$ii);
+			print "Child $i : end\n";
+			exit 0;
+		    }
+		#    else
+		#    {
+		#	my $time = time();
+		#	print "$time:$procs process forked!\n";
+		#	&REAPER if ($zombies > 0);
+		#	sleep(0.02);			
+		#    }
+		    
+		    $num_proc ++;
+		 
+		    ## == if need to collect zombies ==
+		    if (($i-$num_proc-$num_collect) > 0)
+		    {
+			while (($collect = waitpid(-1, WNOHANG)) > 0)
 			{
-				if (-e "$glotDirsRef->{newloc}/$file")
-				{
-					$compDirs{"newbase"} = "$glotDirsRef->{newbase}/$file";
-					$compDirs{"newloc"} = "$glotDirsRef->{newloc}/$file";
-					$compDirs{"oldbase"} = "$glotDirsRef->{oldbase}/$file";
-					$compDirs{"oldloc"} = "$glotDirsRef->{oldloc}/$file";
-					
-					crosscomp(\%compDirs);
-				}
+			    $num_collect ++;
 			}
+		    }					
+		    
+		
+		    do {
+			sleep(1);
+			} until ($num_proc < 5);
+		#    
+		#    #push (@threadsAll, threads->create(\&crosscomp,\%compDirs));
+		#    #$thread_num ++; ##生成线程后，需要把线程计数器加1
 		}
 		
-		closedir NEWBASE;
+		printf STDERR "Course:$num_proc\n";
+
+	    }
+		
+	    
+	}
+    }
+    else
+    {
+	    printf STDERR "### verifier error: Can't open directory $glotDirsRef->{newbase}\n";
+	    exit 1;
+    }
+    
+    #--------------------------
+    # Exit
+    #--------------------------
+    #printf STDERR "--------------------i=$i-------------------\n";
+    #printf STDERR "--------------------$num_proc--------------------\n";
+    
+    print STDERR "Checking...\n";
+    while(1)
+    {
+	
+	if ($num_proc==0)
+	{
+	    finish($log);
+	    
+	    #printf STDERR "\n______________________Finish______________________\n";
+	    exit 0;
 	}
 	else
 	{
-		printf STDERR "### verifier error: Can't open directory $glotDirsRef->{newbase}\n";
-		exit 1;
+	    sleep(1);
 	}
+	
+	#print STDERR "Checking...\n";
+	
+    }
+    
 
 }
 
+
+
+sub REAPER {
+    my $pid;
+    while (($pid = waitpid(-1, WNOHANG)) > 0) {
+        $zombies --;
+    }
+}
+
+
+#------------------------------------------------------------------------
+# Finsih open the output shell script
+#------------------------------------------------------------------------
+sub finish
+{
+    
+    my $tempReport=shift;
+    my %myhash;
+    my $outReport="";
+    
+    tie(%myhash, 'DB_File', $tempReport, O_RDONLY, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
+    
+   # print STDERR "------------aaaaaaaa\n";
+    foreach my $key (sort keys (%myhash))
+    {
+        $outReport.= $myhash{$key};
+	#print STDERR "$key->$myhash{$key}\n";
+    }
+    #print STDERR "------------bbbbbbbbbb\n";
+    
+    untie %myhash;
+    
+    #print STDERR $outReport;
+    
+    #encode('utf8',$outReport);
+    
+    my $str = Encode::decode_utf8($outReport);
+    
+    #print $OUT $outReport;
+    
+    print $OUT $str;
+ 
+    
+
+    if ($gEditor eq "bbedit")
+    {
+	    close $OUT;
+	    close $gOB_NB;
+	    close $gOL_NL;
+	    
+	    foreach ("$gOutfile", "$gCompResult_OBNB", "$gCompResult_OLNL")
+	    {
+		    `/Developer/Tools/SetFile -c "R*ch" "$_"`;
+		    `/Developer/Tools/SetFile -t "Shel" "$_"`;
+		    `/Developer/Tools/Rez -a -m  -o "$_" "$bbeditShellRezScript" >& /dev/null`;
+	    }
+	    
+	    if ($gOpenOutputfile)
+	    {
+		    `bbedit --encoding "utf-8" "$gOutfile"`;
+	    }
+	    
+	    if ($gOpenCompResult)
+	    {
+		    `bbedit --encoding "utf-8" "$gCompResult_OBNB"`;
+		    `bbedit --encoding "utf-8" "$gCompResult_OLNL"`;
+	    }
+       
+    }
+    elsif ($gEditor eq "adview")
+    {
+	    close $OUT;
+	    close $gOB_NB;
+	    close $gOL_NL;
+	    
+	    if ($gOpenOutputfile)
+	    {
+		    `open -a "AD Viewer.app" "$gOutfile"`;
+	    }
+	    
+	    if ($gOpenCompResult)
+	    {
+		    `open -a "AD Viewer.app" "$gCompResult_OBNB"`;
+		    `open -a "AD Viewer.app" "$gCompResult_OLNL"`;
+	    }
+    }
+
+
+}
 
 
 #************************************************************
@@ -635,8 +918,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/en.lproj";
-			printf STDERR "en 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "en 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "Japanese")
@@ -648,8 +931,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/ja.lproj";
-			printf STDERR "ja 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "ja 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "German")
@@ -661,8 +944,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/de.lproj";
-			printf STDERR "de 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "de 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "Italian")
@@ -674,8 +957,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/it.lproj";
-			printf STDERR "it 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "it 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "Spanish")
@@ -687,8 +970,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/es.lproj";
-			printf STDERR "es 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "es 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "French")
@@ -700,8 +983,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/fr.lproj";
-			printf STDERR "fr 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "fr 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	if($loc eq "no")
@@ -713,8 +996,8 @@ sub getLprojs
 			# $lprojs{$2} = "$_/$loc.lproj";
 			m/^$path\/(.*)$/;
 			$lprojs{$1} = "$_/nb.lproj";
-			printf STDERR "nb 补丁生效!!!!!!!!!!!!!!\n";
-			printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
+			#printf STDERR "nb 补丁生效!!!!!!!!!!!!!!\n";
+			#printf STDERR "$lprojs{$1}!!!!!!!!!!!!!!\n";
 		}
 	}
 	return \%lprojs;
@@ -769,14 +1052,29 @@ sub setLocLproj
 #************************************************************************************************************
 sub crosscomp
 {
+	
+	
 	my $dirRef = shift;
+	my $log= shift;
+	my $ii= shift;
+	my $targetProjectName = &lastComponent($dirRef->{'newbase'});
 	my %verifyResult = ();
 	
-	my $targetProjectName = &lastComponent($dirRef->{'newbase'});
-
-	printf $OUT ("\n\n##########################################################################################################\n");
-	printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a component [%03d]: %s\t[0]\n", $gSerialNumber++, $targetProjectName);
-	printf $OUT ("##########################################################################################################\n");
+	
+	#print "111111111", $dirRef->{newbase},"\n";
+	#print "222222222\n";
+	
+	my $myout="";
+	
+	my $componentNub = sprintf("%03d", $ii);
+	$myout .="\n\n##########################################################################################################\n";
+	$myout .="### FocusedLocVerifier PROGRESS: Verifying a component [$componentNub]: $targetProjectName\t[0]\n";
+	$myout .="##########################################################################################################\n";
+	
+	
+	#printf $OUT ("\n\n##########################################################################################################\n");
+	#printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a component [%03d]: %s\t[0]\n", $gSerialNumber++, $targetProjectName);
+	#printf $OUT ("##########################################################################################################\n");
 
 	#------------------------------------------------------------------------------------------------
 	# Missing and extra item check
@@ -799,8 +1097,12 @@ sub crosscomp
 
 		if ($newbase_newloc =~ m/\S/s)
 		{
-			print $OUT "*** FocusedLocVerifier Warning: MIssing or Extra item(s) in NL.\n";
-			print $OUT $newbase_newloc;
+		
+			$myout .= "*** FocusedLocVerifier Warning: MIssing or Extra item(s) in NL.\n";
+			$myout .= $newbase_newloc;
+			
+			#print $OUT "*** FocusedLocVerifier Warning: MIssing or Extra item(s) in NL.\n";
+			#print $OUT $newbase_newloc;
 			
 			#SA
 			print STDERR $newbase_newloc;
@@ -813,10 +1115,19 @@ sub crosscomp
 	#------------------------------------------------------------------------------------------------
 	if ($gDebug)
 	{
-		print $OUT $dirRef->{"newbase"}, "\n";
-		print $OUT $dirRef->{"newloc"}, "\n";
-		print $OUT $dirRef->{"oldbase"}, "\n";
-		print $OUT $dirRef->{"oldloc"}, "\n";
+		$myout .=$dirRef->{"newbase"};
+		$myout .="\n";
+		$myout .=$dirRef->{"newloc"};
+		$myout .="\n";
+		$myout .=$dirRef->{"oldbase"};
+		$myout .="\n";
+		$myout .=$dirRef->{"oldloc"};
+		$myout .="\n";
+		
+		#print $OUT $dirRef->{"newbase"}, "\n";
+		#print $OUT $dirRef->{"newloc"}, "\n";
+		#print $OUT $dirRef->{"oldbase"}, "\n";
+		#print $OUT $dirRef->{"oldloc"}, "\n";
 	}
 	
 	$verifyResult{"projectName"} =  $targetProjectName; 
@@ -924,8 +1235,10 @@ sub crosscomp
 			# Compaare compare results		
 			#
 			#------------------------------------------------------------------------------------------------
-		   comp_compresult($verifyLprojResultRef, $resourcesDir, OB_NB, OL_NL, \%pcx_summary_dir_ob_nb, \%pcx_summary_dir_ol_nl, \%pcx_summary_file_ob_nb, \%pcx_summary_file_ol_nl, \%pcx_summary_nib_ob_nb, \%pcx_summary_nib_ol_nl, $objRef1, $objRef2, 0);
+		   comp_compresult($verifyLprojResultRef, $resourcesDir, OB_NB, OL_NL, \%pcx_summary_dir_ob_nb, \%pcx_summary_dir_ol_nl, \%pcx_summary_file_ob_nb, \%pcx_summary_file_ol_nl, \%pcx_summary_nib_ob_nb, \%pcx_summary_nib_ol_nl, $objRef1, $objRef2, 0, \$myout);
 		}
+		
+		
 		
 		
 		# Do other verifications which can be done from comparison result between newbase and newloc
@@ -934,6 +1247,78 @@ sub crosscomp
 			# Compaare newbase vs newloc 
 		}
 	}
+	
+	$thread_content{$targetProjectName}=$myout;
+	
+	#print $OUT $myout;
+	$gSerialNumber++;
+	$FishCheckToal++;
+	#$thread_num--;
+	
+	my $tempLKName=$dirRef->{newbase};
+	$tempLKName=~s/.*?\/_NewBase\///;
+	$FishCheckLK.=$tempLKName . ", ";
+	
+	
+	my $sem_v;
+        my %hash;
+        my $file_name = $log;
+	
+	
+	my $sem_c = IPC::Semaphore->new(7459, 1, S_IRWXU) || die "IPC::Semaphore->new: $!\n";
+	
+	#print STDERR "\n11111111111111111\n";
+	#my $aaa = $sem_c->getval(0);
+	#print STDERR "Org:$aaa\n";
+	#print STDERR "2222222222222222\n";
+
+	#do {
+	#    $sem_v = $sem_c->getval(0);
+	#    
+	#    print STDERR "\n$tempLKName\n";
+	#    print STDERR "............\n";
+	#    print STDERR $sem_v;
+	#    
+	#} while ($sem_v != 0);
+	
+	
+	$sem_v=$sem_c->getval(0);
+	while ($sem_v != 0)
+	{
+	    $sem_v = $sem_c->getval(0);
+	    sleep(0.5);
+	}
+	
+	$sem_c->op(0,1,IPC_NOWAIT);
+	my $db = tie(%hash, 'DB_File', $file_name, O_CREAT|O_RDWR, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
+
+
+	try
+	{
+		$hash{$componentNub} = $myout;
+	}
+	catch
+	{
+		#warn "caught error: $_";
+		#print STDERR "--->caught error: $_";
+		$hash{$componentNub} = encode('utf8',$myout);
+	};
+
+	#$wrong=~/Wide character in subroutine/;
+	
+	
+	$sem_c->op(0,-1,IPC_NOWAIT);
+	undef $db;
+	untie %hash;
+	
+	
+	my $time_end = strftime("%Y-%m-%d %H.%M.%S", localtime(time)); 
+        print STDERR "Finish checked $targetProjectName $time_end\nChecking...\n";
+        exit 0;
+	
+	#print $OUT $myout;
+	
+	
 }
 
 
@@ -1016,16 +1401,16 @@ sub verify
 #******************************************************************************************
 sub comp_compresult
 {
-	my ($verifyLprojResultRef, $resourcesDir, $label1, $label2, $pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $pcx_summary_file_ref1, $pcx_summary_file_ref2, $pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $objRef1, $objRef2, $supress) = @_;
+	my ($verifyLprojResultRef, $resourcesDir, $label1, $label2, $pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $pcx_summary_file_ref1, $pcx_summary_file_ref2, $pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $objRef1, $objRef2, $supress, $myout) = @_;
 
 	# Directory level summary verification
-	verify_dir_level_summary($pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+	verify_dir_level_summary($pcx_summary_dir_ref1, $pcx_summary_dir_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef, $myout);
 
 	# File level summary verification
-	verify_file_level_summary($pcx_summary_file_ref1, $pcx_summary_file_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+	verify_file_level_summary($pcx_summary_file_ref1, $pcx_summary_file_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef, $myout);
 	
 	# Nib level summary verification
-	verify_nib_level_summary($pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef);
+	verify_nib_level_summary($pcx_summary_nib_ref1, $pcx_summary_nib_ref2, $label1, $label2, $resourcesDir, $supress, $verifyLprojResultRef, $myout);
 		
 		
 		
@@ -1046,37 +1431,37 @@ sub comp_compresult
 				# .strings file
 				if ($objRef1->{$entity}->_strings && $objRef2->{$entity}->_strings)
 				{
-					verify_strings($objRef1->{$entity}->_strings, $objRef2->{$entity}->_strings, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, $supress, $verifyLprojResultRef);
+					verify_strings($objRef1->{$entity}->_strings, $objRef2->{$entity}->_strings, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, $supress, $verifyLprojResultRef, $myout);
 				}
 		
 				# .nib class
 				# Skip this because this is not what a localizer is interested in. 
 				# if ($objRef1->{$entity}->_nib_class && $objRef2->{$entity}->_nib_class) {
-				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_class, $objRef2->{$entity}->_nib_class, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib class", $supress, $verifyLprojResultRef);
+				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_class, $objRef2->{$entity}->_nib_class, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib class", $supress, $verifyLprojResultRef, $myout);
 				#}
 
 				# .nib hierarchy
 				# Skip this because this is not what a localizer is interested in. 
 				# if ($objRef1->{$entity}->_nib_hierarchy && $objRef2->{$entity}->_nib_hierarchy) {
-				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_hierarchy, $objRef2->{$entity}->_nib_hierarchy, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib hierarchy", $supress, $verifyLprojResultRef);
+				#	verify_nib_class_hierarchy($objRef1->{$entity}->_nib_hierarchy, $objRef2->{$entity}->_nib_hierarchy, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib hierarchy", $supress, $verifyLprojResultRef, $myout);
 				#}
 
 				# .nib connection
 				if ($objRef1->{$entity}->_nib_connection_details && $objRef2->{$entity}->_nib_connection_details)
 				{
-					verify_nib_connection_object($objRef1->{$entity}->_nib_connection_details, $objRef2->{$entity}->_nib_connection_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib connection", $supress, $verifyLprojResultRef);
+					verify_nib_connection_object($objRef1->{$entity}->_nib_connection_details, $objRef2->{$entity}->_nib_connection_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib connection", $supress, $verifyLprojResultRef, $myout);
 				}
 								
 				# .nib object
 				if ($objRef1->{$entity}->_nib_object_details && $objRef2->{$entity}->_nib_object_details)
 				{
-					verify_nib_connection_object($objRef1->{$entity}->_nib_object_details, $objRef2->{$entity}->_nib_object_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib object", $supress, $verifyLprojResultRef);
+					verify_nib_connection_object($objRef1->{$entity}->_nib_object_details, $objRef2->{$entity}->_nib_object_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "nib object", $supress, $verifyLprojResultRef, $myout);
 				}
 								
 				# resource details
 				if ($objRef1->{$entity}->_res_details && $objRef2->{$entity}->_res_details)
 				{
-					verify_resource($objRef1->{$entity}->_res_details, $objRef2->{$entity}->_res_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "resource", $supress, $verifyLprojResultRef);
+					verify_resource($objRef1->{$entity}->_res_details, $objRef2->{$entity}->_res_details, $label1, $label2, $resourcesDir, $objRef1->{$entity}->_source, "resource", $supress, $verifyLprojResultRef, $myout);
 				}													
 			}
 			else
@@ -1096,12 +1481,12 @@ sub comp_compresult
 #*****************************************************************************************
 sub verify_resource
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef, $myout) = @_;
 	
 	my $fixed1Ref = fix_resource($c1Ref);
 	my $fixed2Ref = fix_resource($c2Ref);
 
-	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef);	
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef, $myout);	
 }
 
 
@@ -1227,12 +1612,12 @@ sub fix_resource
 #*****************************************************************************************
 sub verify_nib_connection_object
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef, $myout) = @_;
 	
 	my $fixed1Ref = fix_nib_connection_object($c1Ref);
 	my $fixed2Ref = fix_nib_connection_object($c2Ref);
 
-	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef);
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef, $myout);
 }
 
 
@@ -1406,17 +1791,19 @@ sub Truncate
 #*****************************************************************************************
 sub verify_nib_class_hierarchy
 {
-	my ($c1, $c2, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef) = @_;
+	my ($c1, $c2, $c1Title, $c2Title, $resourcesDir, $file, $nibkind, $supress, $verifyLprojResultRef, $myout) = @_;
 	
 	if ($c1 ne $c2)
 	{
 		unless ($gHeaderDone)
 		{
-			print $OUT "*** $resourcesDir/*****.lproj/$file\n";
+			$$myout .= "*** $resourcesDir/*****.lproj/$file\n";
+			#print $OUT "*** $resourcesDir/*****.lproj/$file\n";
 			$gHeaderDone = 1;
 		}
 		
-		print $OUT "  Compare results for $nibkind differ: $c1Title is $c1 but $c2Title is $c2.\n";
+		$$myout .="  Compare results for $nibkind differ: $c1Title is $c1 but $c2Title is $c2.\n"
+		#print $OUT "  Compare results for $nibkind differ: $c1Title is $c1 but $c2Title is $c2.\n";
 	}	
 }
 
@@ -1428,12 +1815,12 @@ sub verify_nib_class_hierarchy
 #*****************************************************************************************
 sub verify_strings
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $supress, $verifyLprojResultRef, $myout) = @_;
 	
 	my $fixed1Ref = fix_strings($c1Ref);
 	my $fixed2Ref = fix_strings($c2Ref);
 
-	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, ".strings", $supress, $verifyLprojResultRef);
+	detail_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $file, ".strings", $supress, $verifyLprojResultRef, $myout);
 }
 
 
@@ -1445,11 +1832,11 @@ sub verify_strings
 #*****************************************************************************************
 sub verify_dir_level_summary
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef, $myout) = @_;
 	my $fixed1Ref = fix_dir_level_summary($c1Ref);
 	my $fixed2Ref = fix_dir_level_summary($c2Ref);
 
-	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "directory", $verifyLprojResultRef);
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "directory", $verifyLprojResultRef, $myout);
 }
 
 
@@ -1461,11 +1848,11 @@ sub verify_dir_level_summary
 #*****************************************************************************************
 sub verify_file_level_summary
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef, $myout) = @_;
 	my $fixed1Ref = fix_file_level_summary($c1Ref);
 	my $fixed2Ref = fix_file_level_summary($c2Ref);
 
-	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "file", $verifyLprojResultRef);
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "file", $verifyLprojResultRef, $myout);
 }
 
 
@@ -1477,11 +1864,11 @@ sub verify_file_level_summary
 #*****************************************************************************************
 sub verify_nib_level_summary
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $verifyLprojResultRef, $myout) = @_;
 	my $fixed1Ref = fix_nib_level_summary($c1Ref);
 	my $fixed2Ref = fix_nib_level_summary($c2Ref);
 
-	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "nib", $verifyLprojResultRef);
+	summary_level_report($fixed1Ref, $fixed2Ref, $c1Title, $c2Title, $resourcesDir, $supress, "nib", $verifyLprojResultRef, $myout);
 }
 
 
@@ -1492,7 +1879,7 @@ sub verify_nib_level_summary
 #*****************************************************************************************
 sub detail_level_report
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $kind, $supress, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $file, $kind, $supress, $verifyLprojResultRef, $myout) = @_;
 	
 #	print $resourcesDir, "\n";
 #	print $file, "\n";
@@ -1622,7 +2009,7 @@ sub detail_level_report
 	#------------------------------------------------------------------------------------------------------
 	# Print detailed report
 	#------------------------------------------------------------------------------------------------------
-	$gHeaderDone = 0;
+	$gHeaderDone = 0; #取消打印文件头 1, 打印文件头 0
 	foreach $index (sort messagePriority keys %detailedReport)
 	{
 		# next if (&verifyResultCode($index) eq "OK");
@@ -1633,55 +2020,96 @@ sub detail_level_report
 		{
 			unless ($gHeaderDone)
 			{
-				printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a file: %s...\n",  $file);
-				&printURLforFile($file, $fileLevelKind, $fileLevelIndex, $verifyLprojResultRef, 0);
+				$$myout.="### FocusedLocVerifier PROGRESS: Verifying a file: $file...\n";
+				#printf $OUT ("### FocusedLocVerifier PROGRESS: Verifying a file: %s...\n",  $file);
+				
+				&printURLforFile($file, $fileLevelKind, $fileLevelIndex, $verifyLprojResultRef, 0, $myout);
 				$gHeaderDone = 1;
 			}
 		}
 		  
-		  
-		  
-		&print1LineResultSummaryMessage($index);
+
+		 
+		 
+		&print1LineResultSummaryMessage($index, $myout);
 		foreach $entry (@{$detailedReport{$index}})
 		{
 		# print $OUT "\t", $file, "\t", $entry->{"itemKey"}, "\n";
-			print $OUT "\t", $entry->{"itemKey"}, "\n";
+			
+			my $tempKey=$entry->{"itemKey"};
+			$$myout.="\t$tempKey\n";
+			
+			#print $OUT "\t", $entry->{"itemKey"}, "\n";
 		
 			if (($kind eq "nib object") || ($kind eq "nib connection"))
 			{
-				&printURLforNib($file, $kind, $index, $verifyLprojResultRef, 1, $entry->{"itemKey"});
+				&printURLforNib($file, $kind, $index, $verifyLprojResultRef, 1, $entry->{"itemKey"}, $myout);
 			}
 			
 			if ($c1Ref->{$entry->{"itemKey"}}->{"category"} eq "identical" )
 			{
-				print $OUT "\t\t";
-				print $OUT "OB/NB:";
-				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				$$myout.="\t\t";
+				$$myout.="OB/NB:";
+				
+				my $keyTemp=$c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"};
+				$$myout.="$keyTemp\n";
+				
+				
+				#print $OUT "\t\t";
+				#print $OUT "OB/NB:";
+				#print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
 			}
 			else
 			{
-				print $OUT "\t\t";
-				print $OUT "OB:";
-				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
-				print $OUT "\t\t";
-				print $OUT "NB:";
-				print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
+				$$myout.="\t\t";
+				$$myout.="OB:";
+				
+				my $keyTem1=$c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"};
+				$$myout.="$keyTem1\n";
+				$$myout.="\t\t";
+				$$myout.="NB:";
+				my $keyTem2=$c1Ref->{$entry->{"itemKey"}}->{"value"}->{"2"};
+				$$myout.="$keyTem2\n";
+				
+				#print $OUT "\t\t";
+				#print $OUT "OB:";
+				#print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				#print $OUT "\t\t";
+				#print $OUT "NB:";
+				#print $OUT $c1Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
 			}
 
 			if ($c2Ref->{$entry->{"itemKey"}}->{"category"} eq "identical" )
 			{
-				print $OUT "\t\t";
-				print $OUT "OL/NL:";
-				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				$$myout.="\t\t";
+				$$myout.="OL/NL:";
+		    
+				my $keyTem3=$c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"};
+				$$myout.="$keyTem3\n";
+				
+				
+				#print $OUT "\t\t";
+				#print $OUT "OL/NL:";
+				#print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
 			}
 			else
 			{
-				print $OUT "\t\t";
-				print $OUT "OL:";
-				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
-				print $OUT "\t\t";
-				print $OUT "NL:";
-				print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
+				$$myout.="\t\t";
+				$$myout.="OL:";
+				my $keyTemp4=$c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"};
+				$$myout.="$keyTemp4\n";
+				
+				$$myout.="\t\t";
+				$$myout.="NL:";
+				my $keyTemp5=$c2Ref->{$entry->{"itemKey"}}->{"value"}->{"2"};
+				$$myout.="$keyTemp5\n";
+				
+				#print $OUT "\t\t";
+				#print $OUT "OL:";
+				#print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"1"}, "\n";
+				#print $OUT "\t\t";
+				#print $OUT "NL:";
+				#print $OUT $c2Ref->{$entry->{"itemKey"}}->{"value"}->{"2"}, "\n";
 			}
 		}
 	}
@@ -1708,7 +2136,7 @@ sub AddFileLevelSummaryReport
 #*****************************************************************************************
 sub summary_level_report
 {
-	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $entityKind, $verifyLprojResultRef) = @_;
+	my ($c1Ref, $c2Ref, $c1Title, $c2Title, $resourcesDir, $supress, $entityKind, $verifyLprojResultRef, $myout) = @_;
 	my %summaryReport = ();
 	my $resultIndex;
 
@@ -1755,12 +2183,15 @@ sub summary_level_report
 		# next if (&verifyResultCode($index) eq "OK");
 		next unless (&printVerifyResul($index));
 		  
-		&print1LineResultSummaryMessage($index);
+		&print1LineResultSummaryMessage($index, $myout);
 	
 		foreach $entry (@{$summaryReport{$index}})
 		{
-			print $OUT $entry->{'name'}, "\n";
-			&printURLforFile($entry->{'name'}, $entry->{'kind'}, $index, $verifyLprojResultRef, 0);
+			my $nameTemp=$entry->{'name'};
+			$$myout .= "$nameTemp\n";
+			
+			#print $OUT $entry->{'name'}, "\n";
+			&printURLforFile($entry->{'name'}, $entry->{'kind'}, $index, $verifyLprojResultRef, 0, $myout);
 			
 			# print "\t", $resourcesDir, "\n";
 			# print "\t", $entry->{'name'}, "\n";
@@ -1801,7 +2232,7 @@ sub valueForMessageCode
 
 sub print1LineResultSummaryMessage
 {
-	my ($index) = @_;
+	my ($index, $myout) = @_;
 	
 	my $code = verifyResultCode($index);
 	my $message = &verifyResultMessage($index);
@@ -1812,15 +2243,18 @@ sub print1LineResultSummaryMessage
 	}
 	elsif ($code eq "INFO")
 	{
-		print $OUT "+++ FocusedLocVerifier INFO: $message ($index)\n";
+		$$myout .= "+++ FocusedLocVerifier INFO: $message ($index)\n";
+		#print $OUT "+++ FocusedLocVerifier INFO: $message ($index)\n";
 	}
 	elsif ($code eq "WARNING")
 	{
-		print $OUT "*** FocusedLocVerifier WARNING: $message ($index)\n";
+		$$myout .= "*** FocusedLocVerifier WARNING: $message ($index)\n";
+		#print $OUT "*** FocusedLocVerifier WARNING: $message ($index)\n";
 	}
 	elsif ($code eq "ERROR")
 	{
-		print $OUT "ÔøΩIÔøΩIÔøΩI FocusedLocVerifier ERROR: $message ($index)\n";
+		$$myout .= "ÔøΩIÔøΩIÔøΩI FocusedLocVerifier ERROR: $message ($index)\n";
+		#print $OUT "ÔøΩIÔøΩIÔøΩI FocusedLocVerifier ERROR: $message ($index)\n";
 	}
 }
 
@@ -2583,7 +3017,7 @@ sub	translateSourceTargetPaths
 #*****************************************************************************************
 sub printURLforNib
 {
-	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl, $objID_class) = @_;
+	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl, $objID_class, $myout) = @_;
 	$objID_class =~ m/^(\d+)/;
 	my $objID = $1;
 	
@@ -2594,10 +3028,15 @@ sub printURLforNib
 	my $OL_URL = &obtainURL($name, $kind, $OL_Exist, $verifyLprojResultRef->{"oldloc"}, "oldloc", $objID);
 	my $NL_URL = &obtainURL($name, $kind, $NL_Exist, $verifyLprojResultRef->{"newloc"}, "newloc", $objID);
 	
-	print $OUT "\t" x $indentLevl, $OB_URL, "\n";
-	print $OUT "\t" x $indentLevl, $NB_URL, "\n";
-	print $OUT "\t" x $indentLevl, $OL_URL, "\n";
-	print $OUT "\t" x $indentLevl, $NL_URL, "\n";
+	$$myout .="\t" x $indentLevl . $OB_URL ."\n";
+	$$myout .="\t" x $indentLevl . $NB_URL ."\n";
+	$$myout .="\t" x $indentLevl . $OL_URL ."\n";
+	$$myout .="\t" x $indentLevl . $NL_URL ."\n";
+	
+	#print $OUT "\t" x $indentLevl, $OB_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $NB_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $OL_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $NL_URL, "\n";
 }
 
 
@@ -2610,7 +3049,7 @@ sub printURLforNib
 #*****************************************************************************************
 sub printURLforFile()
 {
-	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl) = @_;
+	my ($name, $kind, $index, $verifyLprojResultRef, $indentLevl, $myout) = @_;
 	
 	my ($OB_Exist, $NB_Exist, $OL_Exist, $NL_Exist) = &entityExist($index);
 	
@@ -2619,10 +3058,15 @@ sub printURLforFile()
 	my $OL_URL = &obtainURL($name, $kind, $OL_Exist, $verifyLprojResultRef->{"oldloc"}, "oldloc", "");
 	my $NL_URL = &obtainURL($name, $kind, $NL_Exist, $verifyLprojResultRef->{"newloc"}, "newloc", "");
 	
-	print $OUT "\t" x $indentLevl, $OB_URL, "\n";
-	print $OUT "\t" x $indentLevl, $NB_URL, "\n";
-	print $OUT "\t" x $indentLevl, $OL_URL, "\n";
-	print $OUT "\t" x $indentLevl, $NL_URL, "\n";
+	$$myout .="\t" x $indentLevl . $OB_URL . "\n";
+	$$myout .="\t" x $indentLevl . $NB_URL . "\n";
+	$$myout .="\t" x $indentLevl . $OL_URL . "\n";
+	$$myout .="\t" x $indentLevl . $NL_URL . "\n";
+	
+	#print $OUT "\t" x $indentLevl, $OB_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $NB_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $OL_URL, "\n";
+	#print $OUT "\t" x $indentLevl, $NL_URL, "\n";
 }
 
 
