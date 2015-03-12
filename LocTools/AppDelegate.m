@@ -82,6 +82,8 @@
     _AGState=-1;
     [_submissionProgress setHidden:YES];
     _warningWindow.backgroundColor=[NSColor yellowColor];
+    _loctoolsFlag=0;
+    _othersFlag=0;
 }
 
 -(void)timerNotice
@@ -337,7 +339,7 @@
     NSFileHandle *file=[readPipe fileHandleForReading];
     [task launch];
     NSData *data=[file readDataToEndOfFile];
-    return [[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
+    return [[NSString alloc]initWithData:data encoding:NSASCIIStringEncoding];
 }
 
 -(NSInteger)CountNumberStrings:(NSString *)source andtarget:(NSString *)target
@@ -1058,21 +1060,36 @@
     }
 }
 
-- (IBAction)showWindow:(id)sender {
-    self.window.isVisible=YES;
+- (IBAction)ActionLocTools:(id)sender {
+    if (_loctoolsFlag==0) {
+        _loctoolsFlag=1;
+        self.window.isVisible=NO;
+        _showHiddenLocTools.title=@"Show LocTools Window";
+        return;
+    }
+    if (_loctoolsFlag==1) {
+        _loctoolsFlag=0;
+        self.window.isVisible=YES;
+        _showHiddenLocTools.title=@"Hidden LocTools Window";
+        return;
+    }
 }
 
-- (IBAction)hiddenWindow:(id)sender {
-    self.window.isVisible=NO;
+- (IBAction)ActionOtherTools:(id)sender {
+    if (_othersFlag==0) {
+        _othersFlag=1;
+        _tools.window.isVisible=YES;
+        _showHiddenOtherTools.title=@"Hidden Other Tools Window";
+        return;
+    }
+    if (_othersFlag==1) {
+        _othersFlag=0;
+        _tools.window.isVisible=NO;
+        _showHiddenOtherTools.title=@"Show Other Tools Window";
+        return;
+    }
 }
 
-- (IBAction)OtherTools:(id)sender {
-    _tools.window.isVisible=YES;
-}
-
-- (IBAction)hiddenTools:(id)sender {
-    _tools.window.isVisible=NO;
-}
 
 -(void)highLightAllStrings:(NSString *)str withString:(NSString *)theAll
 {

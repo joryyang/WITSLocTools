@@ -102,10 +102,13 @@
 @property (nonatomic,strong)OtherTools *tools;
 
 /*************************MainMenu**********************/
-- (IBAction)showWindow:(id)sender;
-- (IBAction)hiddenWindow:(id)sender;
-- (IBAction)OtherTools:(id)sender;
-- (IBAction)hiddenTools:(id)sender;
+@property (strong) IBOutlet NSMenuItem *showHiddenLocTools;
+@property (strong) IBOutlet NSMenuItem *showHiddenOtherTools;
 
+- (IBAction)ActionLocTools:(id)sender;
+- (IBAction)ActionOtherTools:(id)sender;
+
+@property (nonatomic) NSInteger loctoolsFlag;
+@property (nonatomic) NSInteger othersFlag;
 
 @end
