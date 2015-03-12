@@ -595,24 +595,14 @@
                 <menuItem title="View" id="295">
                     <menu key="submenu" title="View" id="296">
                         <items>
-                            <menuItem title="Show LocTools Window" keyEquivalent="1" id="297">
+                            <menuItem title="Hidden LocTools Window" keyEquivalent="1" id="297">
                                 <connections>
-                                    <action selector="showWindow:" target="494" id="Efp-I4-JV6"/>
+                                    <action selector="ActionLocTools:" target="494" id="ze9-P4-1As"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Hidden LocTools Window" keyEquivalent="2" id="298">
+                            <menuItem title="Show Other Tools Window" keyEquivalent="2" id="FMw-g9-Sxh">
                                 <connections>
-                                    <action selector="hiddenWindow:" target="494" id="Tgc-Qq-aQE"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Show Other Tools Window" keyEquivalent="3" id="FMw-g9-Sxh">
-                                <connections>
-                                    <action selector="OtherTools:" target="494" id="MYv-yk-XR4"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Hidden Other Tools Window" keyEquivalent="4" id="Ac3-Kn-hfv">
-                                <connections>
-                                    <action selector="hiddenTools:" target="494" id="dgU-o9-86r"/>
+                                    <action selector="ActionOtherTools:" target="494" id="Ydt-1Q-N2b"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -949,6 +939,8 @@
                 <outlet property="prePop" destination="xj5-30-0Ev" id="6Ek-vn-Gly"/>
                 <outlet property="projSelectPanel" destination="Y3R-cH-jZO" id="go0-MA-nTn"/>
                 <outlet property="reportLog" destination="4Iv-kV-f5w" id="t7F-ES-dAt"/>
+                <outlet property="showHiddenLocTools" destination="297" id="Rr2-XC-H78"/>
+                <outlet property="showHiddenOtherTools" destination="FMw-g9-Sxh" id="x16-f4-acx"/>
                 <outlet property="submissionProgress" destination="YjD-B0-DFt" id="dAh-NO-PQc"/>
                 <outlet property="submitPop" destination="2aJ-7K-SV8" id="BSg-Qf-JAy"/>
                 <outlet property="submitWindow" destination="2MP-7H-og9" id="v2X-Ue-Vt1"/>
