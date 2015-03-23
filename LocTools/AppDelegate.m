@@ -122,7 +122,7 @@
     NSData *data=[file readDataToEndOfFile];
     NSString *message=[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
     if ([message hasPrefix:@"the version is old"]) {
-        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.3 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
+        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.4 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
         system("open http://10.4.2.6/wiki/pages/D1b8Q7B3/LocTools.html");
         exit(1);
     }
@@ -595,7 +595,7 @@
     NSString *projPathTemp=[NSString stringWithFormat:@"%@/%@/%@/LocEnv",_mainPath,[_MainItem title],[_SubItem title]];
     NSArray *array=[_fileManager contentsOfDirectoryAtPath:projPathTemp error:nil];
     for(NSString *str in array){
-        if ([str hasPrefix:@"TarOut"]) {
+        if ([str isEqualToString:@"TarOut"]) {
             tarballPath=[NSString stringWithFormat:@"%@/%@/%@/LocEnv/%@",_mainPath,[_MainItem title],[_SubItem title],str];
         }
     }
