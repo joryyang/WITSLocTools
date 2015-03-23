@@ -117,7 +117,10 @@ def exportNonGlotableFiles(path):
 
 def fileContent(file):
     if file[-6:] == '.plist':
-        return readPlist(file)
+        try:
+            return readPlist(file)
+        except:
+            return open(file).read()
     else:
         return open(file).read()
 
