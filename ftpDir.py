@@ -47,7 +47,9 @@ if __name__ == '__main__':
 							print i
 					else:
 						print currentSub[key]
-			sys.exit()
+					sys.exit()
+				else:
+					ftpDir = ''
 		else:
 			ftpDir = ''
 	else:
