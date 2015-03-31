@@ -132,8 +132,9 @@ def scanChecktarfile(file):
     return results
 
 def scanXliffdifferfile(file):
-    if ':\n' not in open(file).read():
-        os.remove(file)
+    if '\nTranslation mismatch:' in open(file).read():
+        print 'Translation issues in xliffdiffer, please check.'
+        os.system('open %s'%file)
 
 def main():
     mailContent = ''
@@ -143,7 +144,7 @@ def main():
     elif len(sys.argv) == 1:
         print 'Usage: %s path/to/Reports/folder'%sys.argv[0]
         sys.exit()
-    # formateReports(sys.argv[1])
+    formateReports(sys.argv[1])
     for root, dirs, files in os.walk(sys.argv[1]):
         for file in files:
             if 'checkLocFilesForLocDir' in file:
@@ -168,9 +169,10 @@ def main():
                 for illegalTars in scanChecktarfile(os.path.join(root, file)):
                     print illegalTars
                 print ''
-            # if file[:12] == 'xliffdiffer_':
-            #     scanXliffdifferfile(os.path.join(root, file))
+            if file[:12] == 'xliffdiffer_':
+                scanXliffdifferfile(os.path.join(root, file))
     client(sys.argv[1], 'ScanReports')
     #mailto('tinyliu@wistronits.com', 'Please check and fix', mailContent)
     print 'Trust: %s'%trustModel
-main()
+if __name__ == '__main__':
+    main()
