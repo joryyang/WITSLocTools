@@ -30,7 +30,6 @@
 @property(assign) int timeFlagTemp;
 @property(assign) int runTimes;
 @property (nonatomic) int startOrEnd;
-@property(nonatomic,retain) NSTask *task;
 @property (nonatomic,strong)NSArray *keyWords;
 @property (nonatomic ,assign) int AGState;
 /***************************************************/

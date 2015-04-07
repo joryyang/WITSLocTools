@@ -122,7 +122,7 @@
     NSData *data=[file readDataToEndOfFile];
     NSString *message=[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
     if ([message hasPrefix:@"the version is old"]) {
-        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.4 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
+        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.5 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
         system("open http://10.4.2.6/wiki/pages/D1b8Q7B3/LocTools.html");
         exit(1);
     }
@@ -772,19 +772,19 @@
 
 -(void)runingProgress:(NSString *)command andArguments:(NSArray *)arguments
 {
-    _task=[[NSTask alloc]init];
-    [_task setStandardOutput:[[NSPipe alloc]init]];
-    [_task setStandardInput:[[NSPipe alloc]init]];
-    [_task setStandardError: [_task standardOutput]];
+    NSTask *task=[[NSTask alloc]init];
+    [task setStandardOutput:[[NSPipe alloc]init]];
+    [task setStandardInput:[[NSPipe alloc]init]];
+    [task setStandardError: [task standardOutput]];
     NSString *commandPath=[NSString stringWithFormat:@"%@/%@",_resourcePath,command];
-    [_task setLaunchPath:commandPath];
-    [_task setArguments:arguments];
+    [task setLaunchPath:commandPath];
+    [task setArguments:arguments];
     [[NSNotificationCenter defaultCenter]addObserver: self
                                             selector: @selector(getData:)
                                                 name: NSFileHandleReadCompletionNotification
-                                              object: [[_task standardOutput] fileHandleForReading]];
-    [[[_task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
-    [_task launch];
+                                              object: [[task standardOutput] fileHandleForReading]];
+    [[[task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
+    [task launch];
 }
 
 - (void) getDataOne: (NSNotification *)aNotification
@@ -806,20 +806,20 @@
 
 -(void)runingProgressOne:(NSString *)command andArguments:(NSArray *)arguments
 {
-    _task=[[NSTask alloc]init];
-    [_task setStandardOutput:[[NSPipe alloc]init]];
-    [_task setStandardInput:[[NSPipe alloc]init]];
-    [_task setStandardError: [_task standardOutput]];
+    NSTask *task=[[NSTask alloc]init];
+    [task setStandardOutput:[[NSPipe alloc]init]];
+    [task setStandardInput:[[NSPipe alloc]init]];
+    [task setStandardError: [task standardOutput]];
     NSString *commandPath=[NSString stringWithFormat:@"%@/%@",_resourcePath,command];
-    [_task setLaunchPath:commandPath];
-    [_task setArguments:arguments];
+    [task setLaunchPath:commandPath];
+    [task setArguments:arguments];
     [[NSNotificationCenter defaultCenter]addObserver: self
                                             selector: @selector(getDataOne:)
                                                 name: NSFileHandleReadCompletionNotification
-                                              object: [[_task standardOutput] fileHandleForReading]];
-    [[[_task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
-    [_task launch];
-    [_task waitUntilExit];
+                                              object: [[task standardOutput] fileHandleForReading]];
+    [[[task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
+    [task launch];
+    [task waitUntilExit];
 }
 
 -(void)startProgress
