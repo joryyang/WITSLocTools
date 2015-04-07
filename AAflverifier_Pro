@@ -90,10 +90,14 @@ use Try::Tiny;
 
 no warnings;
 
+use encoding 'utf8';
+use open OUT=>':encoding(utf8)';
+#use open IN=>':encoding(utf8)';
 
 use DB_File;
 use IPC::SysV qw(IPC_PRIVATE S_IRWXU IPC_CREAT);
 use IPC::Semaphore;
+use Storable qw(store retrieve freeze thaw dclone);
 
 use POSIX ":sys_wait_h";
 
@@ -213,7 +217,7 @@ unless (@ARGV > 1)
 {
 	if ($ARGV[0] eq "-getVersion")
 	{
-		print "1.3";
+		print "1.3.1";
 		exit 1;
 	}
 	else
@@ -813,29 +817,37 @@ sub finish
 {
     
     my $tempReport=shift;
-    my %myhash;
+    #my %myhash;
     my $outReport="";
     
-    tie(%myhash, 'DB_File', $tempReport, O_RDONLY, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
+    #tie(%myhash, 'DB_File', $tempReport, O_RDONLY, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
+ 
+    my %hashOut=();
+    my $hashOutF;
+	
+	try
+	{
+	    #print "Start: $tempReport\n";
+		$hashOutF = retrieve($tempReport);
+		#print "adrr: $hashOutF\n";
+		print "value: %{$hashOutF}\n";
+		%hashOut=%{$hashOutF};
+	}
+	catch
+	{
+		print "Unable to retrieve from $tempReport!";
+	};    
+     
     
-   # print STDERR "------------aaaaaaaa\n";
-    foreach my $key (sort keys (%myhash))
+    foreach my $key (sort keys (%hashOut))
     {
-        $outReport.= $myhash{$key};
+        $outReport.= $hashOut{$key};
 	#print STDERR "$key->$myhash{$key}\n";
     }
-    #print STDERR "------------bbbbbbbbbb\n";
     
-    untie %myhash;
-    
-    #print STDERR $outReport;
-    
-    #encode('utf8',$outReport);
     
     my $str = Encode::decode_utf8($outReport);
-    
-    #print $OUT $outReport;
-    
+        
     print $OUT $str;
  
     
@@ -1290,26 +1302,29 @@ sub crosscomp
 	}
 	
 	$sem_c->op(0,1,IPC_NOWAIT);
-	my $db = tie(%hash, 'DB_File', $file_name, O_CREAT|O_RDWR, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
+	#my $db = tie(%hash, 'DB_File', $file_name, O_CREAT|O_RDWR, 0666, $DB_BTREE) || die "Cannot open $file_name: $!\n";
 
+	my %hashOut=();
+	my $hashOutF;
 
 	try
 	{
-		$hash{$componentNub} = $myout;
+		$hashOutF = retrieve($file_name);
+		%hashOut=%{$hashOutF};
 	}
 	catch
 	{
-		#warn "caught error: $_";
-		#print STDERR "--->caught error: $_";
-		$hash{$componentNub} = encode('utf8',$myout);
+		%hashOut=();
+		print "Unable to retrieve from $file_name!";
 	};
-
-	#$wrong=~/Wide character in subroutine/;
 	
+	$hashOut{$componentNub} = $myout;
+	
+	store(\%hashOut, $file_name) or die "Can't store %a in $file_name!\n";
 	
 	$sem_c->op(0,-1,IPC_NOWAIT);
-	undef $db;
-	untie %hash;
+	#undef $db;
+	#untie %hash;
 	
 	
 	my $time_end = strftime("%Y-%m-%d %H.%M.%S", localtime(time)); 

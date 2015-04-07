@@ -620,6 +620,7 @@ use MatchBox::XML;
 use Getopt::Long;
 use Error qw(:try);
 use File::Path;
+use File::Path qw(make_path remove_tree);
 use File::Find;
 use File::stat;
 use File::Spec;
@@ -755,6 +756,12 @@ my $gflidentifierPath = '/Developer/Evolution/LocEnv/locbin/flidentifier';
 
 # my $gSudoPath = "/usr/bin/sudo";
 my $gSudoPath = $gScriptPath . "sudo";
+
+
+unless (-d "/tmp")
+{
+	mkdir "/tmp";
+}
 
 unless (-d "/tmp/AALocBench")
 {
@@ -8393,6 +8400,20 @@ sub AAFLVerifier
 	AALocUtilities::PrintLog("# AAFLVerifier\n");
 	AALocUtilities::PrintLog("#========================================================================================\n");
 
+	
+	my $projectItem = $inAppleGlotEnvPath;
+	$projectItem=~s/.*?_LocProj\///;
+	$projectItem=~s/\/.*?\/GlotEnv\///;
+	my $tempProjectPath="/Users/".$ENV{'USER'}."/Library/Caches/LocCache/nib/Volumes/ProjectsHD/_LocProj/" . $projectItem;
+	
+	if (-e $tempProjectPath )
+	{
+		print STDERR "Removed this project LocCache\n";
+		print STDERR "$tempProjectPath\n";
+		remove_tree($tempProjectPath, { verbose => 1, mode => 0711 });
+	}
+	
+    
 	# `"$gAAflverifierPath" -glot "$inAppleGlotEnvPath" -loc "$language" -outfile "$flVerifierReportFilePath" -dontFormatCompResult -dontListIdenticalInCompResult -adview`;
 	system "$gAAflverifierPath -glot $inAppleGlotEnvPath -loc $language -outfile $flVerifierReportFilePath -dontFormatCompResult -dontListIdenticalInCompResult -adview";
 	# AALocUtilities::PrintLog("flverifier report: $flVerifierReportFilePath\n");
@@ -8444,6 +8465,20 @@ sub AAFLVerifier_Pro
 	AALocUtilities::PrintLog("#========================================================================================\n");
 	AALocUtilities::PrintLog("# AAFLVerifier Pro\n");
 	AALocUtilities::PrintLog("#========================================================================================\n");
+
+
+	my $projectItem = $inAppleGlotEnvPath;
+	$projectItem=~s/.*?_LocProj\///;
+	$projectItem=~s/\/.*?\/GlotEnv\///;
+	my $tempProjectPath="/Users/".$ENV{'USER'}."/Library/Caches/LocCache/nib/Volumes/ProjectsHD/_LocProj/" . $projectItem;
+	
+	if (-e $tempProjectPath )
+	{
+		print STDERR "Removed this project LocCache\n";
+		print STDERR "$tempProjectPath\n";
+		remove_tree($tempProjectPath, { verbose => 1, mode => 0711 });
+	}
+	
 
 	# `"$gAAflverifierPath" -glot "$inAppleGlotEnvPath" -loc "$language" -outfile "$flVerifierReportFilePath" -dontFormatCompResult -dontListIdenticalInCompResult -adview`;
 	system "$gAAflverifierProPath -glot $inAppleGlotEnvPath -loc $language -outfile $flVerifierReportFilePath -dontFormatCompResult -dontListIdenticalInCompResult -adview";
