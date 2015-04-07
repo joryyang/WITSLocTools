@@ -20,9 +20,6 @@
 		8405BADA191715D60018D504 /* App.icns in Resources */ = {isa = PBXBuildFile; fileRef = 8405BAD9191715D60018D504 /* App.icns */; };
 		8408FD5E1AADB3BB00A73F03 /* warning.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8408FD5D1AADB3BB00A73F03 /* warning.plist */; };
 		8408FD601AAE760700A73F03 /* ftpDir.py in Resources */ = {isa = PBXBuildFile; fileRef = 8408FD5F1AAE760700A73F03 /* ftpDir.py */; };
-		840AF30E1AAED84D00A28D6C /* AAflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30B1AAED84D00A28D6C /* AAflverifier */; };
-		840AF30F1AAED84D00A28D6C /* AAflverifier_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */; };
-		840AF3101AAED84D00A28D6C /* AALocCommand in Resources */ = {isa = PBXBuildFile; fileRef = 840AF30D1AAED84D00A28D6C /* AALocCommand */; };
 		840AF3141AAEF46B00A28D6C /* ScanReports.py in Resources */ = {isa = PBXBuildFile; fileRef = 840AF3131AAEF46B00A28D6C /* ScanReports.py */; };
 		840AF3301AAFD4D500A28D6C /* ftpSubmitter.py in Resources */ = {isa = PBXBuildFile; fileRef = 840AF32F1AAFD4D500A28D6C /* ftpSubmitter.py */; };
 		841E281419D6591F007908F8 /* iTunes_itxib_tool.pl in Resources */ = {isa = PBXBuildFile; fileRef = 841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */; };
@@ -98,6 +95,9 @@
 		84931643191A649600629D01 /* verificator in Resources */ = {isa = PBXBuildFile; fileRef = 84931562191A649600629D01 /* verificator */; };
 		84931652191A6F0A00629D01 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 84931651191A6F0A00629D01 /* MainMenu.xib */; };
 		849717E5191E27A900D3070B /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 849717E4191E27A900D3070B /* AVFoundation.framework */; };
+		84C1FDEB1AD3B8E000695683 /* AAflverifier in Resources */ = {isa = PBXBuildFile; fileRef = 84C1FDE81AD3B8E000695683 /* AAflverifier */; };
+		84C1FDEC1AD3B8E000695683 /* AAflverifier_Pro in Resources */ = {isa = PBXBuildFile; fileRef = 84C1FDE91AD3B8E000695683 /* AAflverifier_Pro */; };
+		84C1FDED1AD3B8E000695683 /* AALocCommand in Resources */ = {isa = PBXBuildFile; fileRef = 84C1FDEA1AD3B8E000695683 /* AALocCommand */; };
 		84C560B419D2654900A3E9A6 /* autoFtp.py in Resources */ = {isa = PBXBuildFile; fileRef = 84C560B319D2654900A3E9A6 /* autoFtp.py */; };
 		84C560B619D2E8B100A3E9A6 /* alert.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 84C560B519D2E8B100A3E9A6 /* alert.jpg */; };
 		84CB2BC1191CC70D007B8D15 /* notice.py in Resources */ = {isa = PBXBuildFile; fileRef = 84CB2BC0191CC70D007B8D15 /* notice.py */; };
@@ -144,9 +144,6 @@
 		8405BAD9191715D60018D504 /* App.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = App.icns; sourceTree = "<group>"; };
 		8408FD5D1AADB3BB00A73F03 /* warning.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = warning.plist; sourceTree = "<group>"; };
 		8408FD5F1AAE760700A73F03 /* ftpDir.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ftpDir.py; sourceTree = "<group>"; };
-		840AF30B1AAED84D00A28D6C /* AAflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier; sourceTree = "<group>"; };
-		840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier_Pro; sourceTree = "<group>"; };
-		840AF30D1AAED84D00A28D6C /* AALocCommand */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand; sourceTree = "<group>"; };
 		840AF3131AAEF46B00A28D6C /* ScanReports.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ScanReports.py; sourceTree = "<group>"; };
 		840AF32F1AAFD4D500A28D6C /* ftpSubmitter.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = ftpSubmitter.py; sourceTree = "<group>"; };
 		841E281319D6591F007908F8 /* iTunes_itxib_tool.pl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = iTunes_itxib_tool.pl; sourceTree = "<group>"; };
@@ -223,6 +220,9 @@
 		84931562191A649600629D01 /* verificator */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = verificator; sourceTree = "<group>"; };
 		84931651191A6F0A00629D01 /* MainMenu.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
 		849717E4191E27A900D3070B /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		84C1FDE81AD3B8E000695683 /* AAflverifier */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier; sourceTree = "<group>"; };
+		84C1FDE91AD3B8E000695683 /* AAflverifier_Pro */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AAflverifier_Pro; sourceTree = "<group>"; };
+		84C1FDEA1AD3B8E000695683 /* AALocCommand */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.perl; path = AALocCommand; sourceTree = "<group>"; };
 		84C560B319D2654900A3E9A6 /* autoFtp.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = autoFtp.py; sourceTree = "<group>"; };
 		84C560B519D2E8B100A3E9A6 /* alert.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = alert.jpg; sourceTree = "<group>"; };
 		84CB2BC0191CC70D007B8D15 /* notice.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = notice.py; sourceTree = "<group>"; };
@@ -430,13 +430,13 @@
 				84931492191A649500629D01 /* AAcompare_strings */,
 				84931493191A649500629D01 /* AADNT */,
 				84931494191A649500629D01 /* AAExpandPackage */,
+				84C1FDE81AD3B8E000695683 /* AAflverifier */,
+				84C1FDE91AD3B8E000695683 /* AAflverifier_Pro */,
+				84C1FDEA1AD3B8E000695683 /* AALocCommand */,
 				84931495191A649500629D01 /* AAExpandTarballs */,
 				8432B5EF19B566CB00C8B7EE /* AALocUtilities.pm */,
 				84931496191A649500629D01 /* AAExtractAttributedStrings */,
 				84931497191A649500629D01 /* AAExtractNib */,
-				840AF30B1AAED84D00A28D6C /* AAflverifier */,
-				840AF30C1AAED84D00A28D6C /* AAflverifier_Pro */,
-				840AF30D1AAED84D00A28D6C /* AALocCommand */,
 				845F417E19D0176E00333A71 /* AAflverifierFilter_Pro */,
 				84370E6819D42FBB00D65F17 /* AALocCommand_Org */,
 				84931499191A649500629D01 /* AAflverifierFilter */,
@@ -559,6 +559,7 @@
 				84F7528319C2A24700E32E37 /* Temp_LocEnv.py in Resources */,
 				84931571191A649600629D01 /* AACheckConductorLocEnv in Resources */,
 				846C8A0519AC15C7006C377D /* ComponentData.py in Resources */,
+				84C1FDEB1AD3B8E000695683 /* AAflverifier in Resources */,
 				84931574191A649600629D01 /* AACheckLocEnv in Resources */,
 				84329BA219AF03B70016C343 /* xliffdiffer.py in Resources */,
 				84931591191A649600629D01 /* AAWinflverifier in Resources */,
@@ -570,6 +571,7 @@
 				84931579191A649600629D01 /* AADNT in Resources */,
 				849315E0191A649600629D01 /* IBLock in Resources */,
 				84931652191A6F0A00629D01 /* MainMenu.xib in Resources */,
+				84C1FDEC1AD3B8E000695683 /* AAflverifier_Pro in Resources */,
 				8408FD5E1AADB3BB00A73F03 /* warning.plist in Resources */,
 				849315D3191A649600629D01 /* fpcx in Resources */,
 				84931580191A649600629D01 /* AAinsight2wg in Resources */,
@@ -622,20 +624,18 @@
 				84931588191A649600629D01 /* AALocFileUtilities.pm in Resources */,
 				8493157C191A649600629D01 /* AAExtractAttributedStrings in Resources */,
 				84429E6F19E7B88A007BAD81 /* xliffState.py in Resources */,
+				84C1FDED1AD3B8E000695683 /* AALocCommand in Resources */,
 				84931595191A649600629D01 /* Alter.pl in Resources */,
 				84931596191A649600629D01 /* Alter.pm in Resources */,
 				845F417C19D0131A00333A71 /* Temp_CheckAllPro.py in Resources */,
-				840AF30E1AAED84D00A28D6C /* AAflverifier in Resources */,
 				8493157D191A649600629D01 /* AAExtractNib in Resources */,
 				84580C5619D39E8E00D059AE /* createFolder.sh in Resources */,
 				84931643191A649600629D01 /* verificator in Resources */,
 				84931592191A649600629D01 /* AAXliffUtilities.pm in Resources */,
 				840AF3141AAEF46B00A28D6C /* ScanReports.py in Resources */,
 				840115A31AA35AE100CB606A /* findIDAndRect.py in Resources */,
-				840AF30F1AAED84D00A28D6C /* AAflverifier_Pro in Resources */,
 				84370E6B19D43C4800D65F17 /* printXcodePath.sh in Resources */,
 				84DD6F681A805D3B00EDE3A3 /* ProAppDitto.py in Resources */,
-				840AF3101AAED84D00A28D6C /* AALocCommand in Resources */,
 				84370E6519D3FB0900D65F17 /* iTunes_itxib_tool.py in Resources */,
 				84931577191A649600629D01 /* AACleanupTier3NewLoc in Resources */,
 				84931570191A649600629D01 /* AAad2insight in Resources */,
