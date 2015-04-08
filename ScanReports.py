@@ -61,6 +61,37 @@ def formateReports(folder):
     os.system('find %s -name "Reports?*" -exec rm -R {} \;'%folder)
     os.system('find %s -name "__MACOSX" -exec rm -R {} \;'%folder)
 
+def checkSubmission(GlotEnv):
+    if not os.path.isdir(GlotEnv):
+        return
+    locLproj = ''
+    componentList = [i for i in os.listdir('%s/_NewLoc_org'%GlotEnv) if i!='.DS_Store']
+    for root, dirs, files in os.walk('%s/_OldLoc'%GlotEnv):
+        for dir in dirs:
+            if '.lproj' in dir:
+                locLproj = dir
+                break
+    locFiles = []
+    for root, dirs, files in os.walk('%s/_NewLoc_org'%GlotEnv):
+        for file in files:
+            if file != 'locversion.plist':
+                locFile = os.path.join(root, file)
+                if locLproj in locFile and locLproj:
+                    locFiles.append(locFile)
+    NewLocFiles = [i for i in locFiles if os.path.isfile(i)]
+    submitComponent = []; Identical = []
+    for i in NewLocFiles:
+        if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
+            pass
+        else:
+            Submit = re.findall('_NewLoc_org/(.*?)/', i)[0]
+            if Submit not in submitComponent:
+                submitComponent.append(Submit)
+    for c in componentList:
+        if c not in submitComponent:
+            Identical.append(c)
+    return Identical
+
 def excludes(string):
     for i in ['ibMirrorLayoutDirectionWhenInternationalizing', 'ibExternalSetsMaxLayoutWidthAtFirstLayout', 'autoresizingMask', 'autoresizesSubviews', 'ibExternalWasMisplacedOnLastSave', 'ibExternalHadAnyAmbiguityOnLastSave', 'ibExternalUserDefinedRuntimeAttributes\n', 'insertionPointColor\n', 'alignment\n', 'titleWidth\n', ', width\n', 'wantsLayer\n', 'doubleValue\n']:
         if i in string:
@@ -144,7 +175,7 @@ def main():
     elif len(sys.argv) == 1:
         print 'Usage: %s path/to/Reports/folder'%sys.argv[0]
         sys.exit()
-    formateReports(sys.argv[1])
+    # formateReports(sys.argv[1])
     for root, dirs, files in os.walk(sys.argv[1]):
         for file in files:
             if 'checkLocFilesForLocDir' in file:
@@ -171,6 +202,20 @@ def main():
                 print ''
             if file[:12] == 'xliffdiffer_':
                 scanXliffdifferfile(os.path.join(root, file))
+    GlotEnv = os.path.dirname(sys.argv[1]) + '/GlotEnv'
+    ComponentData = sys.argv[1] + '/' + 'ComponentData.txt'
+    IdenticalComponent = checkSubmission(GlotEnv)
+    currentData = open(ComponentData).read()
+    currentData = currentData[:currentData.find('\n\n#====')] + '\n\n#==========================================================================\n# Identical Component Check Result\n#==========================================================================\n'
+    if IdenticalComponent:
+        print '## Identical Component:'
+        for c in IdenticalComponent:
+            print c
+            currentData += '%s\n'%c
+    else:
+        currentData += 'No problem found'
+    open(ComponentData, 'w').write(currentData)
+
     client(sys.argv[1], 'ScanReports')
     #mailto('tinyliu@wistronits.com', 'Please check and fix', mailContent)
     print 'Trust: %s'%trustModel
