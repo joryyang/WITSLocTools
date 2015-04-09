@@ -81,7 +81,7 @@ def checkSubmission(GlotEnv):
     NewLocFiles = [i for i in locFiles if os.path.isfile(i)]
     submitComponent = []; Identical = []
     for i in NewLocFiles:
-        if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
+        if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
             pass
         else:
             Submit = re.findall('_NewLoc_org/(.*?)/', i)[0]
@@ -203,18 +203,19 @@ def main():
             if file[:12] == 'xliffdiffer_':
                 scanXliffdifferfile(os.path.join(root, file))
     GlotEnv = os.path.dirname(sys.argv[1]) + '/GlotEnv'
-    ComponentData = sys.argv[1] + '/' + 'ComponentData.txt'
-    IdenticalComponent = checkSubmission(GlotEnv)
-    currentData = open(ComponentData).read()
-    currentData = currentData[:currentData.find('\n\n#====')] + '\n\n#==========================================================================\n# Identical Component Check Result\n#==========================================================================\n'
-    if IdenticalComponent:
-        print '## Identical Component:'
-        for c in IdenticalComponent:
-            print c
-            currentData += '%s\n'%c
-    else:
-        currentData += 'No problem found'
-    open(ComponentData, 'w').write(currentData)
+    if os.path.isdir(GlotEnv):
+        ComponentData = sys.argv[1] + '/' + 'ComponentData.txt'
+        IdenticalComponent = checkSubmission(GlotEnv)
+        currentData = open(ComponentData).read()
+        currentData = currentData[:currentData.find('\n\n#====')] + '\n\n#==========================================================================\n# Identical Component Check Result\n#==========================================================================\n'
+        if IdenticalComponent:
+            print '## Identical Component:'
+            for c in IdenticalComponent:
+                print c
+                currentData += '%s\n'%c
+        else:
+            currentData += 'No problem found'
+        open(ComponentData, 'w').write(currentData)
 
     client(sys.argv[1], 'ScanReports')
     #mailto('tinyliu@wistronits.com', 'Please check and fix', mailContent)
