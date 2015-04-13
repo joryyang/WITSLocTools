@@ -89,7 +89,6 @@ def checkSubmission(GlotEnv):
             if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
                 states = 0
         if states:
-            print i
             Submit = re.findall('_NewLoc_org/(.*?)/', i)[0]
             if Submit not in submitComponent:
                 submitComponent.append(Submit)
@@ -219,6 +218,7 @@ def main():
             for c in IdenticalComponent:
                 print c
                 currentData += '%s\n'%c
+            print
         else:
             currentData += 'No problem found'
         open(ComponentData, 'w').write(currentData)
