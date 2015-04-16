@@ -108,10 +108,10 @@ def extractKeyword(string, keyword):
 
 def scanFlverifierFilteredReport(file, extra):
     states = []; translation = []
-    reports = open(file).read().replace('\x00', '')
+    reports = open(file).read().decode('utf16').replace('\x00', '')
     for i in re.findall('\t[0-9a-zA-Z-]+,[\s\S]*?NL:[\s\S]*?\n', reports):#|<file://localhost/[\s\S]*?NL:[\s\S]*?\n
         if 0 < len(re.findall('[-0-9]+',extractKeyword(i, 'NB:'))) < 2 and excludes(i):
-            if extractKeyword(i, 'NB:') <> extractKeyword(i, 'NL:') and len(extractKeyword(i, 'NB:')) < 3:
+            if extractKeyword(i, 'NB:') != extractKeyword(i, 'NL:') and len(extractKeyword(i, 'NB:')) < 3:
                 states.append(re.sub('<nib://[\s\S]+_NewBase[\s\S]*?_NewLoc/|<file://[\s\S]+_NewBase[\s\S]*?_NewLoc/', '', i))
 
     for i in re.findall('\t[0-9a-zA-Z-"]+[\s\S]*?NL:[\s\S]*?\n|<file://localhost/[\s\S]*?NL:[\s\S]*?\n', reports):#|<file://localhost/[\s\S]*?NL:[\s\S]*?\n
