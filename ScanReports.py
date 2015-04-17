@@ -64,20 +64,22 @@ def formateReports(folder):
 def checkSubmission(GlotEnv):
     if not os.path.isdir(GlotEnv):
         return
-    locLproj = ''
+    locLproj = []
     componentList = [i for i in os.listdir('%s/_NewLoc_org'%GlotEnv) if i!='.DS_Store']
     for root, dirs, files in os.walk('%s/_OldLoc'%GlotEnv):
         for dir in dirs:
-            if '.lproj' in dir:
-                locLproj = dir
+            if '.lproj' in dir and dir not in locLproj:
+                locLproj.append(dir)
                 break
+    # locLproj = ['ar.lproj', 'es.lproj', 'de.lproj', 'ko.lproj', 'no.lproj', 'ca.lproj', 'German.lproj', 'tr.lproj', 'vi.lproj', 'nl.lproj', 'cs.lproj', 'sv.lproj', 'en_GB.lproj', 'it.lproj', 'pt_BR.lproj', 'he.lproj', 'hr.lproj', 'id.lproj', 'el.lproj', 'da.lproj', 'hu.lproj', 'zh_CN.lproj', 'ru.lproj', 'pt_PT.lproj', 'uk.lproj', 'fr.lproj', 'es_MX.lproj', 'pl.lproj', 'th.lproj', 'sk.lproj', 'ro.lproj', 'ms.lproj', 'fi.lproj', 'ja.lproj', 'zh_TW.lproj', 'Dutch.lproj', 'English.lproj', 'French.lproj', 'Italian.lproj', 'Japanese.lproj', 'pt.lproj', 'Spanish.lproj']
     locFiles = []
     for root, dirs, files in os.walk('%s/_NewLoc_org'%GlotEnv):
         for file in files:
             if file != 'locversion.plist':
                 locFile = os.path.join(root, file)
-                if locLproj in locFile and locLproj:
-                    locFiles.append(locFile)
+                for l in locLproj:
+                    if l in locFile:
+                        locFiles.append(locFile)
     NewLocFiles = [i for i in locFiles if os.path.isfile(i)]
     submitComponent = []; Identical = []
     for i in NewLocFiles:
