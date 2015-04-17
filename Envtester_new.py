@@ -99,7 +99,9 @@ def locstrings(xliff):
                 m5 = m4
             else:
                 m5 = i.rfind('</target>')
-            strings.append(ii[a1:a2] + '\nid: ' + i[16:m1] + '\nUS string: ' + i[m2:m3] + '\nLoc string: ' + i[m4:m5] + '\n')
+            singed = 'off' if 'signed-off' in i else 'ffo'
+
+            strings.append(ii[a1:a2] + '\nid: ' + i[16:m1] + '\nUS string: ' + i[m2:m3] + '\nLoc string: ' + i[m4:m5] + '\n' + singed)
     return strings
 
 def getlangs(path):
@@ -198,6 +200,10 @@ def parameters(us, loc):
         return 'misplaced order'
 
 def untranslatedtester(us, loc, dnt):
+    if loc[-3:] == 'ffo':
+        return
+    else:
+        loc = loc[:-3]
     dnt.sort(key=lambda x:len(x))
     try:
         for i in dnt:
@@ -226,7 +232,7 @@ def start(files):
     for i in locstrings(files):
         start = i.find('US string: ')
         end = i.find('Loc string: ')
-        checkresult = parameters( i[start:end], i[end:] )
+        checkresult = parameters( i[start:end], i[end:-3] )
         if  checkresult:
             if checkresult == 'Mac OS X':
                 macResult.append('%s\n%s'%(files, i))
