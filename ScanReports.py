@@ -61,6 +61,42 @@ def formateReports(folder):
     os.system('find %s -name "Reports?*" -exec rm -R {} \;'%folder)
     os.system('find %s -name "__MACOSX" -exec rm -R {} \;'%folder)
 
+def checkSubmission(GlotEnv):
+    if not os.path.isdir(GlotEnv):
+        return
+    locLproj = ''
+    componentList = [i for i in os.listdir('%s/_NewLoc_org'%GlotEnv) if i!='.DS_Store']
+    for root, dirs, files in os.walk('%s/_OldLoc'%GlotEnv):
+        for dir in dirs:
+            if '.lproj' in dir:
+                locLproj = dir
+                break
+    locFiles = []
+    for root, dirs, files in os.walk('%s/_NewLoc_org'%GlotEnv):
+        for file in files:
+            if file != 'locversion.plist':
+                locFile = os.path.join(root, file)
+                if locLproj in locFile and locLproj:
+                    locFiles.append(locFile)
+    NewLocFiles = [i for i in locFiles if os.path.isfile(i)]
+    submitComponent = []; Identical = []
+    for i in NewLocFiles:
+        states = 1
+        try:
+            if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and open(i).read() == open(i.replace('_NewLoc_org', '_OldLoc')).read() == open(i.replace('_NewLoc_org', '_NewLoc')).read():
+                states = 0
+        except:
+            if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
+                states = 0
+        if states:
+            Submit = re.findall('_NewLoc_org/(.*?)/', i)[0]
+            if Submit not in submitComponent:
+                submitComponent.append(Submit)
+    for c in componentList:
+        if c not in submitComponent:
+            Identical.append(c)
+    return Identical
+
 def excludes(string):
     for i in ['ibMirrorLayoutDirectionWhenInternationalizing', 'ibExternalSetsMaxLayoutWidthAtFirstLayout', 'autoresizingMask', 'autoresizesSubviews', 'ibExternalWasMisplacedOnLastSave', 'ibExternalHadAnyAmbiguityOnLastSave', 'ibExternalUserDefinedRuntimeAttributes\n', 'insertionPointColor\n', 'alignment\n', 'titleWidth\n', ', width\n', 'wantsLayer\n', 'doubleValue\n']:
         if i in string:
@@ -72,10 +108,10 @@ def extractKeyword(string, keyword):
 
 def scanFlverifierFilteredReport(file, extra):
     states = []; translation = []
-    reports = open(file).read().replace('\x00', '')
+    reports = open(file).read().decode('utf16').replace('\x00', '').encode('utf8')
     for i in re.findall('\t[0-9a-zA-Z-]+,[\s\S]*?NL:[\s\S]*?\n', reports):#|<file://localhost/[\s\S]*?NL:[\s\S]*?\n
         if 0 < len(re.findall('[-0-9]+',extractKeyword(i, 'NB:'))) < 2 and excludes(i):
-            if extractKeyword(i, 'NB:') <> extractKeyword(i, 'NL:') and len(extractKeyword(i, 'NB:')) < 3:
+            if extractKeyword(i, 'NB:') != extractKeyword(i, 'NL:') and len(extractKeyword(i, 'NB:')) < 3:
                 states.append(re.sub('<nib://[\s\S]+_NewBase[\s\S]*?_NewLoc/|<file://[\s\S]+_NewBase[\s\S]*?_NewLoc/', '', i))
 
     for i in re.findall('\t[0-9a-zA-Z-"]+[\s\S]*?NL:[\s\S]*?\n|<file://localhost/[\s\S]*?NL:[\s\S]*?\n', reports):#|<file://localhost/[\s\S]*?NL:[\s\S]*?\n
@@ -132,8 +168,9 @@ def scanChecktarfile(file):
     return results
 
 def scanXliffdifferfile(file):
-    if ':\n' not in open(file).read():
-        os.remove(file)
+    if '\nTranslation mismatch:' in open(file).read():
+        print 'Translation issues in xliffdiffer, please check.'
+        os.system('open %s'%file)
 
 def main():
     mailContent = ''
@@ -168,9 +205,26 @@ def main():
                 for illegalTars in scanChecktarfile(os.path.join(root, file)):
                     print illegalTars
                 print ''
-            # if file[:12] == 'xliffdiffer_':
-            #     scanXliffdifferfile(os.path.join(root, file))
+            if file[:12] == 'xliffdiffer_':
+                scanXliffdifferfile(os.path.join(root, file))
+    GlotEnv = os.path.dirname(sys.argv[1]) + '/GlotEnv'
+    if os.path.isdir(GlotEnv):
+        ComponentData = sys.argv[1] + '/' + 'ComponentData.txt'
+        IdenticalComponent = checkSubmission(GlotEnv)
+        currentData = open(ComponentData).read()
+        currentData = currentData[:currentData.find('\n\n#====')] + '\n\n#==========================================================================\n# Identical Component Check Result\n#==========================================================================\n'
+        if IdenticalComponent:
+            print '## Identical Component:'
+            for c in IdenticalComponent:
+                print c
+                currentData += '%s\n'%c
+            print
+        else:
+            currentData += 'No problem found'
+        open(ComponentData, 'w').write(currentData)
+
     client(sys.argv[1], 'ScanReports')
     #mailto('tinyliu@wistronits.com', 'Please check and fix', mailContent)
     print 'Trust: %s'%trustModel
-main()
+if __name__ == '__main__':
+    main()

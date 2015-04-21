@@ -72,13 +72,14 @@ def compare(path):
             systemversion = (re.findall('[1][012345][ABCDEFGHIJK][0-9a-z]+', checklist) + ['null'])[0]
             version = re.findall('version=[0-9".]+', checklist)[1]
             
-            if systemversion not in checklist1 and systemversion <> platform or version not in checklist1:
+            if systemversion not in checklist1 and systemversion != platform or version not in checklist1:
                 warnings.append( '## Warning: Illicit nib found! Platform: %s, IB tools %s\n%s\n'%(systemversion, version, i[:-15]) )
                 c = 1
 
         except IOError:
-            warnings.append('## ERROR: Extra nib in LocEnv:\n%s\n'%i[:-15])
-            c = 1
+            if not os.path.isdir(os.path.dirname(i.replace('_NewLoc', '_NewLoc_org'))):
+                warnings.append('## ERROR: Extra nib in LocEnv:\n%s\n'%i[:-15])
+                c = 1
     if c == 0:
         warnings.append('No problem found')
     
