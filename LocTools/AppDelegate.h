@@ -12,7 +12,7 @@
 
 @class ChatViewController,RoomViewController;
 
-@interface AppDelegate : NSObject <NSApplicationDelegate,NSTableViewDataSource,NSTableViewDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate,NSTableViewDataSource,NSTableViewDelegate,NSWindowDelegate>
 
 /*变量定义*/
 @property(nonatomic,retain) NSString *mainPath;

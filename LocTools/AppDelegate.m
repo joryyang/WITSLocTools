@@ -84,6 +84,7 @@
     _warningWindow.backgroundColor=[NSColor yellowColor];
     _loctoolsFlag=0;
     _othersFlag=0;
+    _canISubmitPanel.delegate=self;
 }
 
 -(void)timerNotice
@@ -122,7 +123,7 @@
     NSData *data=[file readDataToEndOfFile];
     NSString *message=[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
     if ([message hasPrefix:@"the version is old"]) {
-        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.7 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
+        NSRunAlertPanel(@"发现新版本！", @"LocTools 2.2.8 已经发布，请点击 “确定” 查看更新内容以及下载最新版本的 LocTools。",@"确定",@"", nil);
         system("open http://10.4.2.6/wiki/pages/D1b8Q7B3/LocTools.html");
         exit(1);
     }
@@ -284,47 +285,52 @@
     
     NSArray *arguments=[NSArray arrayWithObjects:reportPath, nil];
     NSString *message=[self getResultStringsByTask:@"ScanReports.py" andArgument:arguments];
-    NSInteger count=0;
-    count=[self CountNumberStrings:message andtarget:@"No problem found"];
-    if (count>=3) {
-        NSString *result=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:projPathTemp, nil]];
-        NSArray *items=[result componentsSeparatedByString:@"\n"];
-        NSMutableArray *projs=[NSMutableArray array];
-        for(NSString *str in items){
-            if (![str isEqualToString:@""]) {
-                [projs addObject:str];
-            }
+    _canISubmitPanel.isVisible=YES;
+    _reportLog.string=message;
+}
+
+-(void)windowWillClose:(NSNotification *)notification
+{
+    _canISubmitPanel.isVisible=NO;
+    [self ftpSubmit];
+}
+
+-(void)ftpSubmit
+{
+    NSString *projPathTemp=[NSString stringWithFormat:@"%@/%@/%@/LocEnv",_mainPath,[_MainItem title],[_SubItem title]];
+    NSString *result=[self getResultStringsByTask:@"ftpDir.py" andArgument:[NSArray arrayWithObjects:projPathTemp, nil]];
+    NSArray *items=[result componentsSeparatedByString:@"\n"];
+    NSMutableArray *projs=[NSMutableArray array];
+    for(NSString *str in items){
+        if (![str isEqualToString:@""]) {
+            [projs addObject:str];
         }
-        [_submitPop removeAllItems];
-        [_submitPop addItemsWithTitles:projs];
-        NSString *selectProj=[_submitPop title];
-        NSArray *aa=[selectProj componentsSeparatedByString:@" "];
-        NSString *final=@"";
-        for(NSString *bb in aa){
-            if ([final isEqualToString:@""]) {
-                final=bb;
-            }
-            else{
-                final=[NSString stringWithFormat:@"%@%@%@",final,@"%",bb];
-            }
-        }
-        NSArray *arguments=[NSArray arrayWithObjects:final, nil];
-        NSString *subItems=[self getResultStringsByTask:@"ftpDir.py" andArgument:arguments];
-        NSArray *cc1=[subItems componentsSeparatedByString:@"\n"];
-        NSMutableArray *cc2=[NSMutableArray array];
-        for(NSString *cc3 in cc1){
-            if (![cc3 isEqualToString:@""] && ![cc3 isEqualToString:@"time out"]) {
-                [cc2 addObject:cc3];
-            }
-        }
-        [_prePop removeAllItems];
-        [_prePop addItemsWithTitles:cc2];
-        [NSApp runModalForWindow:_submitWindow];
     }
-    else{
-        _canISubmitPanel.isVisible=YES;
-        _reportLog.string=message;
+    [_submitPop removeAllItems];
+    [_submitPop addItemsWithTitles:projs];
+    NSString *selectProj=[_submitPop title];
+    NSArray *aa=[selectProj componentsSeparatedByString:@" "];
+    NSString *final=@"";
+    for(NSString *bb in aa){
+        if ([final isEqualToString:@""]) {
+            final=bb;
+        }
+        else{
+            final=[NSString stringWithFormat:@"%@%@%@",final,@"%",bb];
+        }
     }
+    NSArray *arguments=[NSArray arrayWithObjects:final, nil];
+    NSString *subItems=[self getResultStringsByTask:@"ftpDir.py" andArgument:arguments];
+    NSArray *cc1=[subItems componentsSeparatedByString:@"\n"];
+    NSMutableArray *cc2=[NSMutableArray array];
+    for(NSString *cc3 in cc1){
+        if (![cc3 isEqualToString:@""] && ![cc3 isEqualToString:@"time out"]) {
+            [cc2 addObject:cc3];
+        }
+    }
+    [_prePop removeAllItems];
+    [_prePop addItemsWithTitles:cc2];
+    [NSApp runModalForWindow:_submitWindow];
 }
 
 -(NSString *)getResultStringsByTask:(NSString *)command andArgument:(NSArray *)argument
