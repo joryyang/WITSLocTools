@@ -682,11 +682,11 @@
                         </connections>
                     </button>
                     <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="Zot-Qg-M62">
-                        <rect key="frame" x="130" y="257" width="123" height="32"/>
+                        <rect key="frame" x="130" y="257" width="94" height="32"/>
                         <constraints>
-                            <constraint firstAttribute="width" constant="111" id="Ug0-r6-I6h"/>
+                            <constraint firstAttribute="width" constant="82" id="Ug0-r6-I6h"/>
                         </constraints>
-                        <buttonCell key="cell" type="push" title="Can I Submit?" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="opD-Zz-822">
+                        <buttonCell key="cell" type="push" title="Submit" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="opD-Zz-822">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" size="13" name="Helvetica"/>
                         </buttonCell>
@@ -824,7 +824,7 @@
                         </connections>
                     </button>
                     <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="VUV-AP-vnq">
-                        <rect key="frame" x="253" y="257" width="137" height="32"/>
+                        <rect key="frame" x="224" y="257" width="137" height="32"/>
                         <constraints>
                             <constraint firstAttribute="width" constant="125" id="yFj-6f-fvv"/>
                         </constraints>
@@ -837,7 +837,7 @@
                         </connections>
                     </button>
                     <button hidden="YES" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="H8d-AH-AWV">
-                        <rect key="frame" x="390" y="257" width="136" height="32"/>
+                        <rect key="frame" x="361" y="257" width="136" height="32"/>
                         <constraints>
                             <constraint firstAttribute="width" constant="124" id="rh1-LW-ny6"/>
                         </constraints>
