@@ -85,11 +85,13 @@ def checkSubmission(GlotEnv):
     for i in NewLocFiles:
         states = 1
         try:
-            if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and open(i).read() == open(i.replace('_NewLoc_org', '_OldLoc')).read() == open(i.replace('_NewLoc_org', '_NewLoc')).read():
+            if os.path.exists(i.replace('_NewLoc_org', '_OldLoc')) and open(i).read() == open(i.replace('_NewLoc_org', '_OldLoc')).read() == open(i.replace('_NewLoc_org', '_NewLoc')).read():
+                states = 0
+        except error:
+            if os.path.exists(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
                 states = 0
         except:
-            if os.path.isfile(i.replace('_NewLoc_org', '_OldLoc')) and os.stat(i).st_mtime == os.stat(i.replace('_NewLoc_org', '_OldLoc')).st_mtime == os.stat(i.replace('_NewLoc_org', '_NewLoc')).st_mtime:
-                states = 0
+            pass
         if states:
             Submit = re.findall('_NewLoc_org/(.*?)/', i)[0]
             if Submit not in submitComponent:
