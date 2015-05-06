@@ -175,28 +175,28 @@ def parameters(us, loc):
     for i in checklist:
         loc = loc.replace('\xc2\xa0', ' ')
         us = us.replace('\xc2\xa0', ' ')
-        if us.count(i) <> loc.count(i):
+        if us.count(i) != loc.count(i):
             return i
 
     for i in checklist1:
-        if len( re.findall('%%[0-9]\$%s'%i[1:], us) ) + us.count(i) <> len( re.findall('%%%s[0-9]?'%i[1:], loc) ) + len( re.findall('%%[0-9]\$%s'%i[1:], loc) ):
+        if len( re.findall('%%[0-9]\$%s'%i[1:], us) ) + us.count(i) != len( re.findall('%%%s[0-9]?'%i[1:], loc) ) + len( re.findall('%%[0-9]\$%s'%i[1:], loc) ):
             return 'number of %s mismatch'%i
         elif len( re.findall('%%[0-9]\$%s'%i[1:], loc) ) > 0 and loc.count(i) > 0:
             return i + ' partly ordered'
-        elif len( re.findall('%%%s[0-9]'%i[1:], loc) ) <> loc.count(i) and len( re.findall('%%%s[0-9]'%i[1:], loc) ) > 0:
+        elif len( re.findall('%%%s[0-9]'%i[1:], loc) ) != loc.count(i) and len( re.findall('%%%s[0-9]'%i[1:], loc) ) > 0:
             return i + ' .js file'
 
     for i in checklist2:
-        if us.count(i) <> loc.count(i) and us.count(i) > 0:
+        if us.count(i) != loc.count(i) and us.count(i) > 0:
             return 'number of %s mismatch'%i
-        elif us.count(i) <> loc.count(i) and loc.count(i) > 1:
+        elif us.count(i) != loc.count(i) and loc.count(i) > 1:
             return i + ' duplicate order'
 
     for i in re.findall('(?<![Un])19[89][0-9]|(?<![Un])20[01][0-9]', us):
         if i not in loc.replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9') and '{\\rtf1\\ansi\\' not in us:
             return 'year'
 
-    if sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', us))) <> sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', loc))):
+    if sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', us))) != sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', loc))):
         return 'misplaced order'
 
 def untranslatedtester(us, loc, dnt):
@@ -217,7 +217,7 @@ def dnttester(us, loc, dnt):
     try:
         for i in dnt:
             if i in us:
-                if len(re.findall('\W%s\W'%i, us)) <> len(re.findall('\W%s\W'%i, loc)):
+                if len(re.findall('\W%s\W'%i, us)) != len(re.findall('\W%s\W'%i, loc)):
                     return i
     except NameError:
         pass
@@ -235,13 +235,13 @@ def start(files):
         checkresult = parameters( i[start:end], i[end:-3] )
         if  checkresult:
             if checkresult == 'Mac OS X':
-                macResult.append('%s\n%s'%(files, i))
+                macResult.append('%s\n%s'%(files, i[:-3]))
             
             elif checkresult == 'year':
-                yearResult.append('%s\n%s'%(files, i))
+                yearResult.append('%s\n%s'%(files, i[:-3]))
             
             else:
-                argsResult.append('%s\n%s## %s.\n'%(files, i, checkresult))
+                argsResult.append('%s\n%s## %s.\n'%(files, i[:-3], checkresult))
     
         if untranslatedtester( i[start:end], i[end:], dnt1 ):
             dntcontent.append('%s%s'%(files[files.rfind('/')+1:-6], i[start+9:end]))
@@ -348,7 +348,7 @@ def main(pathEnv, states): # autoFtp
         print 'Missing Locversion.plist\n%s\n'%i
         report.write('Missing Locversion.plist\n%s\n\n'%i)
         c = 0
-    if c <> 0:
+    if c != 0:
         print 'No problem found\n'
         report.write('No problem found\n\n')
     
@@ -392,14 +392,37 @@ def main2(pathEnv):# Envtester_beta
     print segmentation('parameters', '')
     report.write(segmentation('parameters', '\n'))
     report1.write(segmentation('untranslated', '\n'))
+    macs = []; years = []
     for i in xliffs:
-        warnings, dntcontents = start(i)
-        for warning in warnings:
+        mac, year, arg, dntcontents = start(i)
+        for warning in arg:
             print warning
             report.write('%s\n'%warning)
+        macs += mac
+        years += year
+
         for dntcontent in dntcontents:
             report1.write('%s\n'%dntcontent)
-    
+
+    print segmentation('Mac OS X', '')
+    report.write(segmentation('Mac OS X', '\n'))
+    if macs:
+        for warning in macs:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+
+    print segmentation('year', '')
+    report.write(segmentation('year', '\n'))
+    if years:
+        for warning in years:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')    
     print segmentation('xliff', '')
     report.write(segmentation('xliff', '\n'))
     k1 = 0; k2 = 0; k3 = 0
@@ -418,7 +441,7 @@ def main2(pathEnv):# Envtester_beta
         print 'Missing Locversion.plist\n%s\n'%i
         report.write('Missing Locversion.plist\n%s\n\n'%i)
         c = 0
-    if c <> 0:
+    if c != 0:
         print 'No problem found\n'
         report.write('No problem found\n\n')
     
@@ -436,6 +459,7 @@ def main2(pathEnv):# Envtester_beta
     else:
         print '## ERROR: Please process your MailNotify.\n'
         report.write('## ERROR: Please process your MailNotify.\n\n')
+    report.write('\nEnvtester verison: 4.0')
 
 def test(path):
     xliffs = []

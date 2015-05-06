@@ -1,682 +1,489 @@
 #! /usr/bin/env python
 #coding=utf-8
-	
-#	File:		Envtester.py
+
+#	File:		Envtester_Finally.py
 #
 #	Contains:	This script scans LocEnv to check Mailnotify, parameters issues, new strings in xliffs,
 #               Locversion.plist issues and execute other commands for loc engineering.
 #
 #	Author:		Tiny Liu tinyliu@wistronits.com Please contact me if you have any suggestion or feedback.
-	
-	
+
+
 '''
-This script scans LocEnv to check Mailnotify, parameters issues, new strings in xliffs and Locversion.plist issues and execute other commands for loc engineering.
+    This script scans LocEnv to check Mailnotify, parameters issues, new strings in xliffs and Locversion.plist issues and execute other commands for loc engineering.
 '''
-	
+
 # strings for info commands
 __author__		= "Tiny Liu (tinyliu@wistronits.com)"
-__version__		= "$Revision: beta 0.9 $"[11:-2]
-__date__		= "$Date: 2013-12-16 $"[7:-2]
+__version__		= "$Revision: custom $"[11:-2]
+__date__		= "$Date: 2014-10-10 $"[7:-2]
 __copyright__	= "Wistron ITS"
-	
-import os, sys, linecache, re, urllib2
-sys.path.append(sys.argv[0][:-12])
 
-def tester(pathEnv):
-	
-	key_word = 'state="new'
-	key_words = 'state=\'new'
-	key_word2 = 'signed-off'
-	key_word3 = 'needs-review-translation'
-	#定义三个需要搜索的关键字
-	
-	k1 = 0
-	k2 = 0
-	k3 = 0
-	
-	pathGlotEnv = pathEnv + '/GlotEnv'
-	path = pathEnv + '/GlotEnv/_Translations'   #Conductor GlotEnv/_Translations 路径
-	pathNB = pathEnv + '/GlotEnv/_NewBase'      #path 指向 LocEnv 的 NB
-	pathinfo = pathEnv + '/Info'
-	pathinfobackup = pathEnv + '/Info_org'
-	pathprojects = pathEnv + '/Projects'
-	pathprojectsbackup = pathEnv + '/Projects_org'
-	pathNL = pathGlotEnv + '/_NewLoc'
-	pathNLbackup = pathNL + '_org'
-	
-	
-	def getlangs(path):
-		OldLocUpdate = 'null'
-		langs = path.split('/')[5][:path.split('/')[5].find('-')]
-		ComponentDatas = []
-		for root, dirs, files in os.walk(path):
-			for ComponentData in files:
-				if 'ComponentData.plist' in ComponentData:
-					ComponentDatas.append(os.path.join(root, ComponentData))
-        
-		if len(ComponentDatas) > 0:
-			f = open(ComponentDatas[0], 'r')
-			for n in range(len(f.readlines())):
-				if 'OldLocUpdate' in linecache.getline(r'%s'%ComponentDatas[0],n):
-					OldLocUpdate = linecache.getline(r'%s'%ComponentDatas[0],n + 1)[9:-10]
-			f.close()
-        
-		NewLocupdate = path[29:].split('_')[0] + path[29:].split('_')[1]
-		return langs, OldLocUpdate, NewLocupdate
+import os, sys, re, linecache, urllib2, time, shutil
 
-	langs, OldLocUpdate, NewLocupdate = getlangs(pathEnv)
-	reports = pathEnv + '/Reports_%s'%langs
-	
-	if os.path.isdir(reports):
-	    pass
-	else:
-	    os.mkdir(reports)
-	
-	reportpath = reports + '/Envtester_%s.txt'%langs
-	reportpath1 = reports + '/Untranslation_%s.txt'%langs
-	report = open(reportpath, "w")
-	
-	def locversioncheck(locversion):    #locversion.plsit tester
-	    lproj = []
-	    for root, dirs, files in os.walk(locversion):
-	        for dir in dirs:
-	            if '.lproj' in dir:
-	                lproj.append(os.path.join(root, dir))   #NB 中所有包含 .lproj 的 folder 路径
-	    
-	    plist = []
-	    for root, dirs, files in os.walk(locversion):
-	        for file in files:
-	            if 'locversion.plist' in file:
-	                plist.append(os.path.join(root, file)[:-17])    #NB 中所有 locversion.plist 的 .lproj folder 路径
-	    
-	    n = 0
-	    for i in lproj:
-	        if 'en.lproj' in i and i.replace('en.lproj', 'English.lproj') in lproj:
-	            print 'Both en.lproj and English.lproj found in NewBase.\n%s\n%s\n'%(i, i.replace('en.lproj', 'English.lproj'))
-	            report.write('Both en.lproj and English.lproj found in NewBase.\n%s\n%s\n\n'%(i, i.replace('en.lproj', 'English.lproj')))
-	            n = 1
-	    for x in lproj:
-	        if x not in plist:
-	            print 'Missing locversion.plist:\n', x, '\n'
-	            report.write('Missing locversion.plist:\n' + x + '\n\n')
-	            n = 1
-	    if n == 0:
-	        print 'No problem found'
-	        report.write('No problem found\n\n')
-	
-	def dntlist(strings):
-	    sums = []
-	    dntlist = ['           ', '--:--:--.---', 'HiraKakuProN', 'Georgia', 'Superclaredon', 'Optima', 'Helvetica', 'MarkerFelt', 'BradleyHandITCTT', 'STHeitiTC', 'STHeitiSC', 'Didot', 'Palatino', 'Cochin', 'HiraMinProN', 'Avenir', 'BodoniSvtyTwoITCTT', 'HoeflerText', 'Baskerville', ' kHz', ' khz', 'OtherViews', '1-Click', '.Mac', 'A-Net', 'A.PACK', 'ACT!', 'Active Directory', 'Ad Lib', 'AddMotion', 'Advanced Video Coding = AVC', 'AIM', 'AirDrop', 'AirPlay', 'AirPort', 'AirPort Express', 'AirPort Extreme', 'AirPrint', 'AirTunes', 'Amp Designer', 'AMR Narrowband = AMR NB', 'Apache', 'Aperture', 'App Nap', 'App Store', 'Apple', 'AppleOrder', 'AppleScript', 'AFP', 'AppleScript Studio', 'AppleTalk', 'AppleVision', 'Apple Cinema Display', 'Apple Configurator', 'Apple Developer', 'Apple DocViewer', 'Apple Hardware Test', 'Apple Inc.', 'Apple Loop', 'Apple Loops', 'Apple Lossless', 'Apple Remote', 'Apple Remote Desktop', 'Apple Software Restore (asr)', 'Apple Store', 'Apple TechStep', 'Apple Thunderbolt Display', 'Apple TV', 'Aqua', 'Assembled in the USA', 'AssistiveTouch', 'Audible', 'Audio Units', 'Automator', 'Batch Monitor', 'Bento', 'Bicycle', 'Bluetooth', 'Bonjour', 'Book Proofer', 'Boot Camp', 'Bring Learning Home', 'Cable Micro', 'Carbon', 'Cards', 'Cinema Tools', 'Cocoa', 'ColorSync', 'Compressor', 'Core Animation', 'Core Image', 'Core Storage', 'Core Video', 'Cover Flow', 'Dashboard', 'Dashcode', 'DECnet', 'Designed by Apple in California', 'Device Micro', 'DialAssist', 'Dock', 'Domain Admins', 'Drummer', 'DVD Studio Pro', 'DVD@CCESS', 'EarPods', 'Eudora', 'Exchange', 'Exposé', 'Extensions Manager', 'FaceTime', 'FairPlay', 'FileVault', 'Final Cut', 'Final Cut Pro', 'Final Cut Studio', 'Finder', 'FireWire', 'Flex Pitch', 'Flex Time', 'Flyover', 'Fusion Drive', 'Game Center', 'GarageBand', 'Gatekeeper', 'Genius', 'Google', 'GRid', 'https://iforgot.apple.com', 'iAd', 'iBooks', 'iBooks Author', 'iBooks Store', 'iCal', 'ICCID', 'iChat', 'iChat Theater', 'iCloud', 'ICQ', 'iDisk', 'iDVD', 'iLife', 'iMac', 'IMEI', 'iMessage', 'iMovie', 'iMovie Theater', 'iOS', 'iPad', 'iPad mini', 'iPhone', 'iPhone 3G', 'iPhone 3GS', 'iPhone 4', 'iPhone 4s', 'iPhone 5c', 'iPhone 5s', 'iPhoto', 'iPod', 'iPod classic', 'iPod nano', 'iPod shuffle', 'iPod touch', 'iSight', 'iTunes', 'iTunes Connect', 'iTunes Extras', 'iTunes Live', 'iTunes LP', 'iTunes Match', 'iTunes Media', 'iTunes Music Store', 'iTunes Pass', 'iTunes Producer', 'iTunes Store', 'iTunes U', 'iWeb', 'iWork', 'Jam Pack', 'Java', 'Ken Burns', 'Keynote', 'Launchpad', 'Lightning', 'Logic Remote', 'Mac', 'MacBook', 'MacBook Air', 'MacBook Pro', 'Macintosh', 'Mac App Store', 'Mac mini', 'Mac OS', 'Mac OS X', 'Mac OS X Leopard', 'Mac OS X Lion', 'Mac OS X Lion Developer Preview', 'Mac OS X Snow Leopard', 'Mac Pro', 'Magic Mouse', 'Magic Songs', 'Magic Trackpad', 'Mail', 'MainStage', 'Marker Felt', 'Micro', 'Mission Control', 'Mobile Applications', 'Mobile Time Machine', 'MobileMe', 'Motion', 'Multi-Touch', 'Music Store', 'Nike+', 'Nike + iPod', 'Noteworthy', 'NTSC', 'Numbers', 'On-The-Go', 'Open Link', 'OS X', 'OS X Mavericks', 'OS X Mountain Lion', 'ou=people, o=company ', 'Pages', 'PAL', 'Passbook', 'Pedalboard', 'Photo Booth', 'Ping', 'Podcast Capture', 'Podcast Producer', 'Podcast Producer Server', 'Podcast Publisher', 'Port Micro', 'Port Micro 0', 'Port Micro 1', 'Power Nap', 'PowerSong', 'Proof', 'Push', 'QuickTime', 'QuickTime Player', 'Rendezvous', 'Retina', 'Rosetta', 'Safari', 'SANE', 'SDK', 'Server', 'Setting the Pace', 'Shop different', 'Siri', 'Smart Control', 'SnapBack', 'Sound Manager', 'Spaces', 'Spotlight', 'STAKCopy', 'STAKNode', 'Starbucks', 'SuperDrive', 'Super Port Micro', 'The power to be your best.', 'The Universal Client', 'There’s an app for that', 'Think different', 'Time Capsule', 'Time Machine', 'TokenTalk', 'Top Sites', 'Touch ID', 'Tremor', 'TrueType', 'Twitter', 'Unicode', 'VoiceDial', 'VoiceOver', 'VoiceOver Kit', 'VPN', 'Web Clip', 'WebObjects', 'WebScript', 'Wi-Fi + Cellular', 'Wi-Fi Direct', 'Wiki Server', 'X Window System', 'Xray', 'Xsan', 'Xserve', 'Yahoo!', 'YouTube', 'Text Cell', 'Table View Cell', 'DON\'T LOCALIZE', 'DNL']
-	    for i in dntlist:
-	        sums.append(strings.count(i))
-	    if len(re.findall('[a-zA-Z]+', strings)) > 0:
-	        return sum(sums)
-	    else:
-	        return 1
-	
-	def check(file):
-	    strings = []
-	    usstrings = []
-	    locstrings = []
-	
-	    tmx = open(file, "r")
-	
-	    tmxs = tmx.read()
-	    s = re.findall('<file [\s\S]*?</file>', tmxs)
-	    for ii in s:
-	        x = re.findall('<trans-unit [\s\S]*?</trans-unit>', ii)
-    
-	        for i in x:
-	            a1 = ii.find('origin=') + 8
-	            a2 = ii.find(' source-language') - 1
-	            if i.find('" restype=', 16) > i.find('\' restype=', 16):
-	                m1 = i.find('" restype=', 16)
-	            else:
-	                m1 = i.find('\' restype=', 16)
-	            m2 = i.find('<source>') + 8
-	            m3 = i.find('</source>')
-	            m4 = i.find('>', i.find('<target')+7) + 1
-	            if i.rfind('</target>') == -1:
-	                m5 = m4
-	            else:
-	                m5 = i.rfind('</target>')
-	            strings.append(ii[a1:a2] + '\nid: ' + i[16:m1] + '\nUS string: ' + i[m2:m3] + '\nLoc string: ' + i[m4:m5] + '\n')
-	
-	    for i in strings:
-	        start = i.find('US string: ')
-	        end = i.find('Loc string: ')
-	        usstrings.append(i[start:end])
-	        locstrings.append(i[end:])
-	
-	    c = 0
-	    n = 0
-	    args = []
-	    while n < len(usstrings):
-	        
-	        for i in re.findall('[0-9]+', usstrings[n]):
-	            if len(i) == 4 and i[:2] == '20' and i not in locstrings[n].replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9') and '\u20' not in usstrings[n].lower() and '!#x20' not in usstrings[n] and str(int(i) + 543) not in locstrings[n] and '\\rtf1\\ansi' not in usstrings[n]:
-	                args.append(usstrings[n])
-	                print file + '\n', strings[n], '## ERROR: Years mismatch.\n- Thai Buddhist calendar is 543 bigger than Gregorian calendar.\n- AB number format: ٠١٢٣٤٥٦٧٨٩.\n'
-	                report.write(file + '\n' + strings[n] + '## ERROR: Years mismatch.\n- Thai Buddhist calendar is 543 bigger than Gregorian calendar.\n- AB number format: ٠١٢٣٤٥٦٧٨٩.\n\n')
-	                c = 1
-	
-	        if usstrings[n].count('\\f') <> locstrings[n].count('\\f') and '\\rtf1\\ansi' not in usstrings[n]:
-	            print file + '\n', strings[n] + '\n## ERROR: Number of "\\f" mismatch.\n'
-	            report.write(file + '\n' + strings[n] + '## ERROR: Number of "\\f" mismatch.\n\n')
-	            c = 1
-	        
-	        if usstrings[n][usstrings[n].find('\\f'):].count('\\n') <> locstrings[n][locstrings[n].find('\\f'):].count('\\n') and '\\f' in usstrings[n] and '\\f' in locstrings[n] and '\\rtf1\\ansi' not in usstrings[n]:
-	            print file + '\n', strings[n]
-	            report.write(file + '\n' + strings[n] + '## ERROR: Number of "\\n" mismatch.\n\n')
-	            c = 1
-	
-	        if 'Mac OS X' in locstrings[n] and 'Mac OS X' not in usstrings[n]:
-	            print file + '\n', strings[n] + '\n## ERROR: "Mac" was dropped from the name since Lion, and it is now simply "OS X".\n'
-	            report.write(file + '\n' + strings[n] + '## ERROR: "Mac" was dropped from the name since Lion, and it is now simply "OS X".\n\n')
-	            c = 1
-	
-	        if usstrings[n].count('%1$') <> locstrings[n].count('%1$') and locstrings[n].count('%1$') > 1:  #如果本地化字串有一个以上 1$，才与英文字串对比
-	            x1 = usstrings[n]
-	            print file + '\n', strings[n]
-	            report.write(file + '\n' + strings[n] + '\n')
-	            args.append(usstrings[n])
-	            c = 1
-	        
-	        if usstrings[n].count('%2$') <> locstrings[n].count('%2$') and locstrings[n].count('%2$') > 1:
-	            x2 = usstrings[n]
-	            if x2 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%3$') <> locstrings[n].count('%3$') and locstrings[n].count('%3$') > 1:
-	            x3 = usstrings[n]
-	            if x3 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%4$') <> locstrings[n].count('%4$') and locstrings[n].count('%4$') > 1:
-	            x31 = usstrings[n]
-	            if x31 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%5$') <> locstrings[n].count('%5$') and locstrings[n].count('%5$') > 1:
-	            x32 = usstrings[n]
-	            if x32 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%6$') <> locstrings[n].count('%6$') and locstrings[n].count('%6$') > 1:
-	            x33 = usstrings[n]
-	            if x33 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%7$') <> locstrings[n].count('%7$') and locstrings[n].count('%7$') > 1:
-	            x34 = usstrings[n]
-	            if x34 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%') <> locstrings[n].count('%') + locstrings[n].count('٪') and '%' in usstrings[n]:
-	            x4 = usstrings[n]
-	            if x4 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%@') + usstrings[n].count('%1$@') + usstrings[n].count('%2$@') + usstrings[n].count('%3$@') + usstrings[n].count('%4$@') + usstrings[n].count('%5$@') + usstrings[n].count('%6$@') + usstrings[n].count('%7$@') + usstrings[n].count('%@1') + usstrings[n].count('%@2') + usstrings[n].count('%@3') + usstrings[n].count('%@4') <> locstrings[n].count('%@') + locstrings[n].count('%1$@') + locstrings[n].count('%2$@') + locstrings[n].count('%3$@') + locstrings[n].count('%4$@') + locstrings[n].count('%5$@') + locstrings[n].count('%6$@') + locstrings[n].count('%7$@') + locstrings[n].count('%@1') + locstrings[n].count('%@2') + locstrings[n].count('%@3') + locstrings[n].count('%@4'):
-	            x5 = usstrings[n]
-	            if x5 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('^') <> locstrings[n].count('^'):
-	            x6 = usstrings[n]
-	            if x6 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	    
-	        if usstrings[n].count('^b') <> locstrings[n].count('^b'):
-	            x61 = usstrings[n]
-	            if x61 not in args:
-	                print file + '\n', strings[n] + '## ERROR: Number of ^b mismatch.\n'
-	                report.write(file + '\n' + strings[n] + '## ERROR: Number of ^b mismatch.\n\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if locstrings[n].count('^b\n') + usstrings[n].count('^b\n') > 0:
-	            x62 = usstrings[n]
-	            if x62 not in args:
-	                print file + '\n', strings[n] + '## ERROR: String should not end with ^b.\n'
-	                report.write(file + '\n' + strings[n] + '## ERROR: String should not end with ^b.\n\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('^0') <> locstrings[n].count('^0'):
-	            x7 = usstrings[n]
-	            if x7 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('^1') <> locstrings[n].count('^1'):
-	            x8 = usstrings[n]
-	            if x8 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('^2') <> locstrings[n].count('^2'):
-	            x9 = usstrings[n]
-	            if x9 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('^3') <> locstrings[n].count('^3'):
-	            x10 = usstrings[n]
-	            if x10 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%lld') <> locstrings[n].count('%lld') and usstrings[n].count('%lld') <> locstrings[n].count('%1$lld') + locstrings[n].count('%2$lld') + locstrings[n].count('%3$lld') + locstrings[n].count('%4$lld'):
-	            x11 = usstrings[n]
-	            if x11 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%%') <> locstrings[n].count('%%'):
-	            x12 = usstrings[n]
-	            if x12 not in args:
-	                print file + '\n', strings[n], '\nThe two % should not be separated.\n'
-	                report.write(file + '\n' + strings[n] + 'The two % should not be separated.\n\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%TRACKNAME') <> locstrings[n].count('%TRACKNAME'):
-	            x13 = usstrings[n]
-	            if x13 not in args:
-	                print file + '\n', strings[n], '\nThis parameter should not be translated.\n'
-	                report.write(file + '\n' + strings[n] + 'This parameter should not be translated.\n\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%ld') <> locstrings[n].count('%ld') and usstrings[n].count('%ld') <> locstrings[n].count('%1$ld') + locstrings[n].count('%2$ld') + locstrings[n].count('%3$ld') + locstrings[n].count('%4$ld'):
-	            x14 = usstrings[n]
-	            if x14 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	    
-	        if usstrings[n].count('%a') <> locstrings[n].count('%a'):
-	            a = usstrings[n]
-	            if a not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%b') <> locstrings[n].count('%b'):
-	            b = usstrings[n]
-	            if b not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%c') <> locstrings[n].count('%c'):
-	            ce = usstrings[n]
-	            if ce not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%d') <> locstrings[n].count('%d') and usstrings[n].count('%d') <> locstrings[n].count('%1$d') + locstrings[n].count('%2$d') + locstrings[n].count('%3$d') + locstrings[n].count('%4$d'):
-	            d = usstrings[n]
-	            if d not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%e') <> locstrings[n].count('%e'):
-	            e = usstrings[n]
-	            if e not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%f') <> locstrings[n].count('%f'):
-	            f = usstrings[n]
-	            if f not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%g') <> locstrings[n].count('%g'):
-	            g = usstrings[n]
-	            if g not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%h') <> locstrings[n].count('%h'):
-	            h = usstrings[n]
-	            if h not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%i') <> locstrings[n].count('%i'):
-	            i = usstrings[n]
-	            if i not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%j') <> locstrings[n].count('%j'):
-	            j = usstrings[n]
-	            if j not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%k') <> locstrings[n].count('%k'):
-	            k = usstrings[n]
-	            if k not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%l') <> locstrings[n].count('%l') and usstrings[n].count('%l') <> locstrings[n].count('%1$l') + locstrings[n].count('%2$l') + locstrings[n].count('%3$l') + locstrings[n].count('%4$l'):
-	            l = usstrings[n]
-	            if l not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%m') <> locstrings[n].count('%m'):
-	            m = usstrings[n]
-	            if m not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%n') <> locstrings[n].count('%n'):
-	            n1 = usstrings[n]
-	            if n1 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%o') <> locstrings[n].count('%o'):
-	            o = usstrings[n]
-	            if o not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%p') <> locstrings[n].count('%p'):
-	            p = usstrings[n]
-	            if p not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%q') <> locstrings[n].count('%q'):
-	            q = usstrings[n]
-	            if q not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%r') <> locstrings[n].count('%r'):
-	            r = usstrings[n]
-	            if r not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%s') <> locstrings[n].count('%s') and usstrings[n].count('%s') <> locstrings[n].count('%1$s') + locstrings[n].count('%2$s') + locstrings[n].count('%3$s') + locstrings[n].count('%4$s'):
-	            s = usstrings[n]
-	            if s not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%1$S') + usstrings[n].count('%2$S') + usstrings[n].count('%3$S') + usstrings[n].count('%4$S') <> locstrings[n].count('%1$S') + locstrings[n].count('%2$S') + locstrings[n].count('%3$S') + locstrings[n].count('%4$S'):
-	            S = usstrings[n]
-	            if S not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%S') <> locstrings[n].count('%S') and usstrings[n].count('%S') <> locstrings[n].count('%1$S') + locstrings[n].count('%2$S') + locstrings[n].count('%3$S') + locstrings[n].count('%4$S'):
-	            S1 = usstrings[n]
-	            if S1 not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	
-	        if usstrings[n].count('%t') <> locstrings[n].count('%t'):
-	            t = usstrings[n]
-	            if t not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%u') <> locstrings[n].count('%u') and usstrings[n].count('%u') <> locstrings[n].count('%1$u') + locstrings[n].count('%2$u') + locstrings[n].count('%3$u') + locstrings[n].count('%4$u'):
-	            u = usstrings[n]
-	            if u not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%v') <> locstrings[n].count('%v'):
-	            v = usstrings[n]
-	            if v not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%w') <> locstrings[n].count('%w'):
-	            w = usstrings[n]
-	            if w not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%x') <> locstrings[n].count('%x'):
-	            x = usstrings[n]
-	            if x not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%y') <> locstrings[n].count('%y'):
-	            y = usstrings[n]
-	            if y not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        if usstrings[n].count('%z') <> locstrings[n].count('%z'):
-	            z = usstrings[n]
-	            if z not in args:
-	                print file + '\n', strings[n]
-	                report.write(file + '\n' + strings[n] + '\n')
-	                args.append(usstrings[n])
-	                c = 1
-	        
-	        n = n + 1
-	    
-	    if c == 0:
-	        print file, '\nNo problem found\n'
-	        report.write(file + '\nNo problem found\n\n')
-	
-	tmxs = []
-	print 'Loc Eng based on %s for US update, leverage from %s.'%(NewLocupdate, OldLocUpdate)
-	report.write('\nLoc Eng based on %s for US update, leverage from %s.\n\n'%(NewLocupdate, OldLocUpdate))
-	print '#' + '=' * 74 + '\n# parameters Check Result\n#' + '=' * 74
-	report.write('#' + '=' * 74 + '\n# parameters Check Result\n#' + '=' * 74 + '\n')
-	for root, dirs, files in os.walk(path):
-	    for tmx in files:
-	        if '.xliff' in tmx:
-	            tmxs.append(os.path.join(root, tmx))
-	
-	for n in range(0, len(tmxs)):
-	    check(tmxs[n])
-	
-	os.system('find %s -name ".DS_Store" -exec rm {} \;'%(pathEnv))    #删除 _Translations folder 中包含的 .DS_Store 隐藏档；
-	
-	for root, dirs, files in os.walk(pathGlotEnv):
-	    if '_NewLoc_org' not in dirs:
-	        os.system('ditto %s %s'%(pathNL, pathNLbackup))
-	    break
-	# 备份 NL，如果已经存在备份则跳过
-	
-	fl = []
-	for root, dirs, files in os.walk(path):
-	    for f in files:
-	        if '.xliff' in f:
-	            fl.append(os.path.join(root, f))
-	
-	MailNotify = []
-	for root, dirs, files in os.walk(pathEnv):
-	    for m in files:
-	        if 'MailNotify' in m:
-	            MailNotify.append(os.path.join(root, m))
-	
-	for line1 in range(len(fl)):
-	    opent = open(fl[line1],"r")
-	    k1 = k1 + opent.read().count(key_word)
-	opent.close()
-	
-	for line1 in range(len(fl)):
-	    opent = open(fl[line1],"r")
-	    k1 = k1 + opent.read().count(key_words)
-	opent.close()
-	
-	#所有 xliff 中 state="new 的数量
-	
-	for line2 in range(len(fl)):
-	    opent = open(fl[line2],"r")
-	    k2 = k2 + opent.read().count(key_word2)
-	opent.close()
-	#所有 xliff 中 signed-off 的数量
-	
-	for line3 in range(len(fl)):
-	    opent = open(fl[line3],"r")
-	    k3 = k3 + opent.read().count(key_word3)
-	opent.close()
-	#所有 xliff 中 needs-review-translation 的数量
-	
-	os.system('find %s -name ".marking" -exec rm -R {} \;'%(pathEnv))   #删除 .marking 隐藏档
-	
-	print ''
-	print '#' + '=' * 74 + '\n# xliff Check Result\n#' + '=' * 74
-	report.write('#' + '=' * 74 + '\n# xliff Check Result\n#' + '=' * 74 + '\n')
-	print 'New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n'%(k1, k3, k2)
-        report.write('New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n\n'%(k1, k3, k2))
-	
-	print '#' + '=' * 74 + '\n# Locversion.plist Check Result\n#' + '=' * 74
-	report.write('#' + '=' * 74 + '\n# Locversion.plist Check Result\n#' + '=' * 74 + '\n')
-	locversioncheck(pathNB)    #调用 CheckLocversion 检查 NB 中是否缺失 Locversion.plist
-	print ''
-	
-	print '#' + '=' * 74 + '\n# MailNotify Check Result\n#' + '=' * 74
-	report.write('#' + '=' * 74 + '\n# MailNotify Check Result\n#' + '=' * 74 + '\n')
-	Checkmail = open(MailNotify[0],"r")
-	k4 = Checkmail.read().count('stanleyauyeung')   #搜索 MailNotify 中是否包含 stanley
-	Checkmail.close()
-	while k4 == 1:                                     #如果包含 stanley 则已经正常替换
-	    print 'No Problem Found'
-	    report.write('No Problem Found\n')
-	#---- 备份 info 跟 projects ----
-	    for root, dirs, files in os.walk(pathEnv):
-	        if 'Info_org' not in dirs:
-	            os.system('ditto %s %s'%(pathinfo, pathinfobackup))
-	            os.system('ditto %s %s'%(pathprojects, pathprojectsbackup))
-	#---- 备份 info 跟 projects ----
-	        break
-	    break
-	else:
-	    print '## ERROR: Please process your MailNotify.'
-	    report.write('## ERROR: Please process your MailNotify.\n\n')
-	print ''
-	
-	print 'Language: ' + langs + '\n'
-	
-	#---- check tool version ----
-	url = 'http://10.4.2.6/wiki/pages/01Y8Y6S81/Envtester.html'
-	try:
-	    response = urllib2.urlopen(url, timeout = 5)
-	    if 'Envtester3.4' in response.read():
-	        print 'Envtester verison: 3.5'
-	        report.write('\n\nEnvtester verison: 3.5\n')
-	
-	    else:
-	        print 'The new version has been released to: \nhttp://10.4.2.6/wiki/pages/01Y8Y6S81/Envtester.html\nPlease update immediately.'
-	        report.write('\nThe new version has been released to: \nhttp://10.4.2.6/wiki/pages/01Y8Y6S81/Envtester.html\nPlease update immediately.\n')
-	except urllib2.URLError,e:
-	    print e.reason, '\nPlease connect to intranet for version info.'
-	    report.write(e.reason + '\n\nPlease connect to intranet for version info.\n')
-	
-	report.close
+#shutil.rmtree(dir) 删除多层目录
 
 def tittle():
     print '*' * 70
     print 'You are using the script Envtester to detect you project folder.'
     print '*' * 70
 
-tester(sys.argv[1])
+def segmentation(text, n):
+    return '#' + '=' * 74 + '\n# %s Check Result\n#'%text + '=' * 74 + '%s'%n
+
+def backupfolder(folder):
+    if os.path.isdir(folder + '_org'):
+        pass
+    else:
+        os.popen('ditto %s %s'%(folder, folder + '_org'))
+
+def backupfolder1(folder):
+    if os.path.isdir(folder[:folder.rfind('/')] + '/_Backup%s'%(folder[folder.rfind('/'):])):
+        pass
+    else:
+        os.popen('ditto %s %s'%(folder, folder[:folder.rfind('/')] + '/_Backup%s'%(folder[folder.rfind('/'):])))
+
+def createmailnotify():
+    return 'locsubmits@group.apple.com, stanleyauyeung@apple.com, queenie.chui@apple.com, rachel.yu@apple.com, alvinjim@apple.com, wong_alex@apple.com, Leaders.Apple@wistronits.com'
+
+def dntlist(url):
+    try:
+        response = urllib2.urlopen(url, timeout = 5)
+        return response.read().split('\n')
+    except urllib2.URLError:
+        return []
+
+def createfolder(folder):
+    if os.path.isdir(folder):
+        pass
+    else:
+        os.mkdir(folder)
+
+def checklocversion(path):
+    lproj = []
+    s = ''
+    for root, dirs, files in os.walk(path):
+        for dir in dirs:
+            if '.lproj' in dir:
+                lproj .append( os.path.join(root, dir+'/locversion.plist') )
+    
+    for i in lproj:
+        if not os.path.isfile(i):
+            s += i
+    return s
+
+def checkmailnotify(mailnotify):
+    if 'stanleyauyeung' in open(mailnotify).read():
+        return True
+
+def locstrings(xliff):
+    strings = []
+    usstrings = []
+    locstrings = []
+	
+    s = re.findall('<file [\s\S]*?</file>', open(xliff).read())
+    for ii in s:
+        x = re.findall('<trans-unit [\s\S]*?</trans-unit>', ii)
+        
+        for i in x:
+            a1 = ii.find('origin=') + 8
+            a2 = ii.find(' source-language') - 1
+            if i.find('" restype=', 16) > i.find('\' restype=', 16):
+                m1 = i.find('" restype=', 16)
+            else:
+                m1 = i.find('\' restype=', 16)
+            m2 = i.find('<source>') + 8
+            m3 = i.find('</source>')
+            m4 = i.find('>', i.find('<target')+7) + 1
+            if i.rfind('</target>') == -1:
+                m5 = m4
+            else:
+                m5 = i.rfind('</target>')
+            singed = 'off' if 'signed-off' in i else 'ffo'
+
+            strings.append(ii[a1:a2] + '\nid: ' + i[16:m1] + '\nUS string: ' + i[m2:m3] + '\nLoc string: ' + i[m4:m5] + '\n' + singed)
+    return strings
+
+def getlangs(path):
+    OldLocUpdate = 'null'
+    langs = path.split('/')[5][:path.split('/')[5].find('-')]
+    ComponentDatas = []
+    for root, dirs, files in os.walk(path):
+        for ComponentData in files:
+            if 'ComponentData.plist' in ComponentData:
+                ComponentDatas.append(os.path.join(root, ComponentData))
+    
+    if len(ComponentDatas) > 0:
+        f = open(ComponentDatas[0], 'r')
+        for n in range(len(f.readlines())):
+            if 'OldLocUpdate' in linecache.getline(r'%s'%ComponentDatas[0],n):
+                OldLocUpdate = linecache.getline(r'%s'%ComponentDatas[0],n + 1)[9:-10]
+        f.close()
+    
+    NewLocupdate = path[29:].split('_')[0] + path[29:].split('_')[1]
+    return langs, OldLocUpdate, NewLocupdate
+
+def TransState(file, keyword, keyword1, keyword2, keyword3):
+    state = {}
+    checkfile = open(file).read()
+    state[keyword] = checkfile.count(keyword)
+    state[keyword1] = checkfile.count(keyword1)
+    state[keyword2] = checkfile.count(keyword2)
+    state[keyword3] = checkfile.count(keyword3)
+    return state
+
+def checkxliffdiffer(reportfolder):
+    for dir in os.listdir(reportfolder):
+        if 'xliffdiffer_' in dir:
+            return 1
+
+def appleglot(lang, plugin, pathNL, pathag):
+    pluginlist = {1:'', 2:'-g /AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin -g /AppleInternal/Library/EmbeddedFrameworks/ProApps/IBPlugIns/LunaKitEmbedded.ibplugin', 3:'-g /AppleInternal/Developer/Plugins/MAToolKitLogicIBPlugIn.ibplugin'}
+    aglangs = {'AB':'ar', 'B':'en_GB', 'BR':'pt_BR', 'CA':'ca', 'CH':'zh_CN', 'CR':'hr', 'CZ':'cs', 'D':'de', 'D_1':'German','DK':'da', 'E':'es', 'FU':'fr', 'GR':'el', 'H':'no', 'HB':'he', 'ID':'id', 'J':'ja', 'K':'fi', 'KH':'ko', 'MG':'hu', 'MY':'ms', 'MX':'es_MX', 'N':'nl', 'PL':'pl', 'PO':'pt_PT', 'RO':'ro', 'RS':'ru', 'S':'sv', 'SL':'sk', 'T':'it', 'TA':'zh_TW', 'TH':'th', 'TU':'tr', 'UA':'uk', 'VN':'vi'}
+
+    if os.path.isfile(plugin):
+        plugins = open(plugin).read()
+    else:
+        plugins = pluginlist[ input('1, OSX, Server, iTunes, Remote Desktop, iWork, iBook\n2, ProApps, iPhoto, iMovie\n3, GarageBand\n4, Enter other plugins\nPlease select your project: ') ]
+
+    if os.path.isdir(pathag):
+        os.system('rm -R %s'%pathag)
+        time.sleep(0)
+        os.makedirs(pathag)
+    else:
+        os.makedirs(pathag)
+
+    os.chdir(pathag)
+    agOL = pathag + '/_OldLoc'
+    agNB = pathag + '/_NewBase'
+    agOB = pathag + '/_OldBase'
+    os.system('/usr/local/bin/appleglot -d . -x create')
+    os.system('/usr/local/bin/appleglot setlangs en %s'%(aglangs[lang]))
+    os.system('/usr/local/bin/appleglot getlangs')
+    os.system('ditto %s %s'%(pathNL, agOL))
+    os.system('ditto %s %s'%(pathNL, agNB))
+    os.system('ditto %s %s'%(pathNL, agOB))
+    os.system('/usr/local/bin/appleglot -d . -x populate %s'%plugins)
+
+def addorder(source):
+    return [source[i] if '$' in source[i] else source[i].replace('%', '%%%s$'%(i+1)) for i in range(len(source))]
+
+def parameters(us, loc):
+    checklist = ['Mac OS X', '^b', '^b\n', '\f', '^', '^0', '^1', '^2', '^3', '^4', '%TRACKNAME', '%a', '%b', '%c', '%e', '%f', '%g', '%h', '%j', '%k', '%m', '%n', '%o', '%p', '%q', '%r', '%t', '%v', '%w', '%x', '%y', '%z'] # ignored: '%'
+    checklist1 = ['%@', '%d', '%S', '%s', '%u', '%lld', '%ld', '%l', '%i']
+    checklist2 = ['%1$', '%2$', '%3$', '%4$', '%5$', '%6$', '%7$']
+    for i in checklist:
+        loc = loc.replace('\xc2\xa0', ' ')
+        us = us.replace('\xc2\xa0', ' ')
+        if us.count(i) != loc.count(i):
+            return i
+
+    for i in checklist1:
+        if len( re.findall('%%[0-9]\$%s'%i[1:], us) ) + us.count(i) != len( re.findall('%%%s[0-9]?'%i[1:], loc) ) + len( re.findall('%%[0-9]\$%s'%i[1:], loc) ):
+            return 'number of %s mismatch'%i
+        elif len( re.findall('%%[0-9]\$%s'%i[1:], loc) ) > 0 and loc.count(i) > 0:
+            return i + ' partly ordered'
+        elif len( re.findall('%%%s[0-9]'%i[1:], loc) ) != loc.count(i) and len( re.findall('%%%s[0-9]'%i[1:], loc) ) > 0:
+            return i + ' .js file'
+
+    for i in checklist2:
+        if us.count(i) != loc.count(i) and us.count(i) > 0:
+            return 'number of %s mismatch'%i
+        elif us.count(i) != loc.count(i) and loc.count(i) > 1:
+            return i + ' duplicate order'
+
+    for i in re.findall('(?<![Un])19[89][0-9]|(?<![Un])20[01][0-9]', us):
+        if i not in loc.replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9') and '{\\rtf1\\ansi\\' not in us:
+            return 'year'
+
+    if sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', us))) != sorted(addorder(re.findall('%[0-9$.]+[a-zA-Z@]|%[a-zA-Z@]', loc))):
+        return 'misplaced order'
+
+def untranslatedtester(us, loc, dnt):
+    if loc[-3:] == 'ffo':
+        return
+    else:
+        loc = loc[:-3]
+    dnt.sort(key=lambda x:len(x))
+    try:
+        for i in dnt:
+            if 'DNL' not in us and 'T LOCALIZE' not in us.upper():
+                if us.replace(i, '')[11:] == loc.replace(i, '')[12:] and len(re.findall('[a-zA-Z]', us.replace(i, '')[11:])):
+                    return 1
+    except NameError:
+        pass
+
+def dnttester(us, loc, dnt):
+    try:
+        for i in dnt:
+            if i in us:
+                if len(re.findall('\W%s\W'%i, us)) != len(re.findall('\W%s\W'%i, loc)):
+                    return i
+    except NameError:
+        pass
+
+
+def start(files):
+    macResult = []; yearResult = []; argsResult = []; dntcontent = []
+    dnttester = []
+    dnt = dntlist('http://10.4.2.6/dntlist')
+    dnt1 = dntlist('http://10.4.2.6/dnt')
+
+    for i in locstrings(files):
+        start = i.find('US string: ')
+        end = i.find('Loc string: ')
+        checkresult = parameters( i[start:end], i[end:-3] )
+        if  checkresult:
+            if checkresult == 'Mac OS X':
+                macResult.append('%s\n%s'%(files, i[:-3]))
+            
+            elif checkresult == 'year':
+                yearResult.append('%s\n%s'%(files, i[:-3]))
+            
+            else:
+                argsResult.append('%s\n%s## %s.\n'%(files, i[:-3], checkresult))
+    
+        if untranslatedtester( i[start:end], i[end:], dnt1 ):
+            dntcontent.append('%s%s'%(files[files.rfind('/')+1:-6], i[start+9:end]))
+
+    dntcontent.sort(key=lambda x:len(x))
+
+#        if dnttester(us, loc, dnt1):
+#            dnttester.append('%s\n%s'%(files, i))
+
+    if not argsResult:
+        argsResult.append('%s\nNo problem found\n'%files)
+    if not dntcontent:
+        dntcontent.append('%s\nNo problem found\n'%files)
+
+    return macResult, yearResult, argsResult, dntcontent[::-1]
+
+def buildVersion(path):
+    s1 = path.find('_LocProj/') + 9
+    s2 = path.find('_', s1)
+    s3 = path.find('_', s2) + 1
+    s4 = path.find('_', s3)
+    project = path[s1:s2]
+    code = path[s3:s4]
+    return '%s%s'%(project, code)
+
+def main(pathEnv, states): # autoFtp
+    pathGlotEnv = pathEnv + '/GlotEnv'
+    pathxliff = pathEnv + '/GlotEnv/_Translations'
+    pathNB = pathEnv + '/GlotEnv/_NewBase'
+    pathinfo = pathEnv + '/Info'
+    pathmailnotify = pathEnv + '/Info/MailNotify'
+    pathprojects = pathEnv + '/Projects'
+    pathNL = pathGlotEnv + '/_NewLoc'
+    pathcomponentData = pathEnv + '/GlotEnv/_ComponentData'
+    
+    os.popen('find %s -name ".marking" -exec rm -R {} \;'%pathEnv)
+    
+    langs, OldLocUpdate, NewLocupdate = getlangs(pathcomponentData)
+    createfolder('%s/Reports_%s'%(pathEnv, langs))
+    if checkxliffdiffer('%s/Reports_%s'%(pathEnv, langs)) and states == 'on':
+        appleglot(langs, '/Volumes/ProjectsHD/_AG/AG_%s_%s/plugins'%(langs, buildVersion(pathEnv)), pathNL, '/Volumes/ProjectsHD/_AG/AG_%s_%s_finally'%(langs, buildVersion(pathEnv)))
+        pathxliff = '/Volumes/ProjectsHD/_AG/AG_%s_%s_finally/_Translations'%(langs, buildVersion(pathEnv)) #'/Volumes/ProjectsHD/_AG/AG_%s_check/_Translations'%langs | pathxliff
+    
+    report = open('%s/Reports_%s/Envtester_Finally.txt'%(pathEnv, langs), 'w+')
+    report1 = open('%s/Reports_%s/untranslation.txt'%(pathEnv, langs), 'w+')
+    report.write('\nLoc Eng based on %s for US update, leverage from %s.\n\n'%(NewLocupdate, OldLocUpdate))
+    #    report = open('%s/Reports_%s/Envtester_%s_test.txt'%(pathEnv, langs, langs), 'w+')
+    xliffs = []
+    for root, dirs, files in os.walk(pathxliff):
+        for file in files:
+            if '.xliff' in file:
+                xliffs.append(os.path.join(root, file))
+    
+    print segmentation('parameters', '')
+    report.write(segmentation('parameters', '\n'))
+    report1.write(segmentation('untranslated', '\n'))
+    macs = []; years = []
+    for i in xliffs:
+        mac, year, arg, dntcontents = start(i)
+        for warning in arg:
+            print warning
+            report.write('%s\n'%warning)
+        macs += mac
+        years += year
+
+        for dntcontent in dntcontents:
+            report1.write('%s\n'%dntcontent)
+
+    print segmentation('Mac OS X', '')
+    report.write(segmentation('Mac OS X', '\n'))
+    if macs:
+        for warning in macs:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+
+    print segmentation('year', '')
+    report.write(segmentation('year', '\n'))
+    if years:
+        for warning in years:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+
+    print segmentation('xliff', '')
+    report.write(segmentation('xliff', '\n'))
+    k1 = 0; k2 = 0; k3 = 0
+    for i in xliffs:
+        keywords = TransState(i, 'state="new', 'state=\'new', 'needs-review-translation', 'signed-off')
+        k1 += keywords['state="new'] + keywords['state=\'new']
+        k2 += keywords['needs-review-translation']
+        k3 += keywords['signed-off']
+    print 'New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n'%(k1, k2, k3)
+    report.write('New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n\n'%(k1, k2, k3))
+    
+    print segmentation('Locversion.plist', '')
+    report.write(segmentation('Locversion.plist', '\n'))
+    c = 1
+    for i in checklocversion(pathNB).split('locversion.plist')[:-1]:
+        print 'Missing Locversion.plist\n%s\n'%i
+        report.write('Missing Locversion.plist\n%s\n\n'%i)
+        c = 0
+    if c != 0:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+    
+    print segmentation('MailNotify', '')
+    report.write(segmentation('MailNotify', '\n'))
+    if checkmailnotify(pathmailnotify):
+        backupfolder1(pathinfo)
+        backupfolder1(pathprojects)
+        backupfolder(pathNL)
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+    
+    else:
+        print '## ERROR: Please process your MailNotify.\n'
+        report.write('## ERROR: Please process your MailNotify.\n\n')
+
+def main2(pathEnv):# Envtester_beta
+    pathGlotEnv = pathEnv + '/GlotEnv'
+    pathxliff = pathEnv + '/GlotEnv/_Translations'
+    pathNB = pathEnv + '/GlotEnv/_NewBase'
+    pathinfo = pathEnv + '/Info'
+    pathmailnotify = pathEnv + '/Info/MailNotify'
+    pathprojects = pathEnv + '/Projects'
+    pathNL = pathGlotEnv + '/_NewLoc'
+    pathcomponentData = pathEnv + '/GlotEnv/_ComponentData'
+    
+    os.popen('find %s -name ".marking" -exec rm -R {} \;'%pathEnv)
+    
+    langs, OldLocUpdate, NewLocupdate = getlangs(pathcomponentData)
+    createfolder('%s/Reports_%s'%(pathEnv, langs))
+    report = open('%s/Reports_%s/Envtester_%s.txt'%(pathEnv, langs, langs), 'w+')
+    report1 = open('%s/Reports_%s/untranslation.txt'%(pathEnv, langs), 'w+')
+    report.write('\nLoc Eng based on %s for US update, leverage from %s.\n\n'%(NewLocupdate, OldLocUpdate))
+    #    report = open('%s/Reports_%s/Envtester_%s.txt'%(pathEnv, langs, langs), 'w+') | report = open('%s/Reports_%s/Envtester_Finally.txt'%(pathEnv, langs), 'w+')
+    xliffs = []
+    for root, dirs, files in os.walk(pathxliff): #'/Volumes/ProjectsHD/_AG/AG_%s_check/_Translations'%langs | pathxliff
+        for file in files:
+            if '.xliff' in file:
+                xliffs.append(os.path.join(root, file))
+    
+    print segmentation('parameters', '')
+    report.write(segmentation('parameters', '\n'))
+    report1.write(segmentation('untranslated', '\n'))
+    macs = []; years = []
+    for i in xliffs:
+        mac, year, arg, dntcontents = start(i)
+        for warning in arg:
+            print warning
+            report.write('%s\n'%warning)
+        macs += mac
+        years += year
+
+        for dntcontent in dntcontents:
+            report1.write('%s\n'%dntcontent)
+
+    print segmentation('Mac OS X', '')
+    report.write(segmentation('Mac OS X', '\n'))
+    if macs:
+        for warning in macs:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+
+    print segmentation('year', '')
+    report.write(segmentation('year', '\n'))
+    if years:
+        for warning in years:
+            print warning
+            report.write('%s\n'%warning)
+    else:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')    
+    print segmentation('xliff', '')
+    report.write(segmentation('xliff', '\n'))
+    k1 = 0; k2 = 0; k3 = 0
+    for i in xliffs:
+        keywords = TransState(i, 'state="new', 'state=\'new', 'needs-review-translation', 'signed-off')
+        k1 += keywords['state="new'] + keywords['state=\'new']
+        k2 += keywords['needs-review-translation']
+        k3 += keywords['signed-off']
+    print 'New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n'%(k1, k2, k3)
+    report.write('New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n\n'%(k1, k2, k3))
+    
+    print segmentation('Locversion.plist', '')
+    report.write(segmentation('Locversion.plist', '\n'))
+    c = 1
+    for i in checklocversion(pathNB).split('locversion.plist')[:-1]:
+        print 'Missing Locversion.plist\n%s\n'%i
+        report.write('Missing Locversion.plist\n%s\n\n'%i)
+        c = 0
+    if c != 0:
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+    
+    print segmentation('MailNotify', '')
+    report.write(segmentation('MailNotify', '\n'))
+    if not checkmailnotify(pathmailnotify):
+        open(pathmailnotify, 'w').write(createmailnotify())
+    if checkmailnotify(pathmailnotify):
+        backupfolder1(pathinfo)
+        backupfolder1(pathprojects)
+        backupfolder(pathNL)
+        print 'No problem found\n'
+        report.write('No problem found\n\n')
+    
+    else:
+        print '## ERROR: Please process your MailNotify.\n'
+        report.write('## ERROR: Please process your MailNotify.\n\n')
+    report.write('\nEnvtester verison: 4.0')
+
+def test(path):
+    xliffs = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if '.xliff' in file:
+                xliffs.append(os.path.join(root, file))
+    
+    print segmentation('parameters', '')
+    for i in xliffs:
+        warnings, dntcontents = start(i)
+        for warning in warnings:
+            print warning
+
+def parameterstester(pathxliff):
+    xliffs = []
+    for root, dirs, files in os.walk(pathxliff): #'/Volumes/ProjectsHD/_AG/AG_%s_check/_Translations'%langs | pathxliff
+        for file in files:
+            if '.xliff' in file:
+                xliffs.append(os.path.join(root, file))
+    
+    print segmentation('parameters', '')
+    for i in xliffs:
+        warnings, dntcontents = start(i)
+        for warning in warnings:
+            print warning
+main2(sys.argv[1])

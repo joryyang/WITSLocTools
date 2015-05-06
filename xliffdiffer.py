@@ -11,6 +11,7 @@ import os
 import sys
 import linecache
 import re
+import time
 sys.path.append(sys.argv[0][:-14])
 
 def tittle():
@@ -124,6 +125,13 @@ def tester(pathEnv, plugins):
 
     _ag = '/Volumes/ProjectsHD/_AG'
     if os.path.isdir(_ag):
+        currentTime = time.gmtime()[1]
+        for file in os.listdir(_ag):
+            oldAG = os.path.join(_ag, file)
+            createTime = time.gmtime(os.stat(oldAG).st_mtime)[1]
+            delay = currentTime - createTime
+            if delay == 2 or delay == -10:
+                os.system('rm -R %s'%oldAG)
         pass
     
     else:
