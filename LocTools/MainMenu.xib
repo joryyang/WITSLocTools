@@ -682,11 +682,11 @@
                         </connections>
                     </button>
                     <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="Zot-Qg-M62">
-                        <rect key="frame" x="130" y="257" width="94" height="32"/>
+                        <rect key="frame" x="267" y="257" width="91" height="32"/>
                         <constraints>
-                            <constraint firstAttribute="width" constant="82" id="Ug0-r6-I6h"/>
+                            <constraint firstAttribute="width" constant="79" id="Ug0-r6-I6h"/>
                         </constraints>
-                        <buttonCell key="cell" type="push" title="Submit" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="opD-Zz-822">
+                        <buttonCell key="cell" type="push" title="Submit!" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="opD-Zz-822">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" size="13" name="Helvetica"/>
                         </buttonCell>
@@ -823,21 +823,8 @@
                             <action selector="flashProject:" target="494" id="mSD-LZ-mwD"/>
                         </connections>
                     </button>
-                    <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="VUV-AP-vnq">
-                        <rect key="frame" x="224" y="257" width="137" height="32"/>
-                        <constraints>
-                            <constraint firstAttribute="width" constant="125" id="yFj-6f-fvv"/>
-                        </constraints>
-                        <buttonCell key="cell" type="push" title="Before Run PCX" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Lkl-HN-ID4">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="beforeRunPcx:" target="494" id="Zhl-SO-zoc"/>
-                        </connections>
-                    </button>
                     <button hidden="YES" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="H8d-AH-AWV">
-                        <rect key="frame" x="361" y="257" width="136" height="32"/>
+                        <rect key="frame" x="358" y="257" width="136" height="32"/>
                         <constraints>
                             <constraint firstAttribute="width" constant="124" id="rh1-LW-ny6"/>
                         </constraints>
@@ -880,6 +867,19 @@
                             <autoresizingMask key="autoresizingMask"/>
                         </scroller>
                     </scrollView>
+                    <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="VUV-AP-vnq">
+                        <rect key="frame" x="130" y="257" width="137" height="32"/>
+                        <constraints>
+                            <constraint firstAttribute="width" constant="125" id="yFj-6f-fvv"/>
+                        </constraints>
+                        <buttonCell key="cell" type="push" title="Before Run PCX" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Lkl-HN-ID4">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="beforeRunPcx:" target="494" id="Zhl-SO-zoc"/>
+                        </connections>
+                    </button>
                 </subviews>
                 <constraints>
                     <constraint firstAttribute="trailing" secondItem="wZx-vY-mOh" secondAttribute="trailing" constant="80" id="4C1-eC-6As"/>
@@ -889,7 +889,7 @@
                     <constraint firstItem="SMp-mt-y6f" firstAttribute="leading" secondItem="372" secondAttribute="leading" constant="20" id="985-bn-qxy"/>
                     <constraint firstItem="CdD-00-Cya" firstAttribute="top" secondItem="eOu-x2-Ph2" secondAttribute="bottom" constant="9" id="B2O-Tf-tOO"/>
                     <constraint firstAttribute="trailing" secondItem="GFz-is-deg" secondAttribute="trailing" constant="20" id="Dtv-PT-VbN"/>
-                    <constraint firstItem="VUV-AP-vnq" firstAttribute="leading" secondItem="Zot-Qg-M62" secondAttribute="trailing" constant="12" id="Fra-ZJ-AVi"/>
+                    <constraint firstItem="VUV-AP-vnq" firstAttribute="leading" secondItem="Zot-Qg-M62" secondAttribute="trailing" constant="-216" id="Fra-ZJ-AVi"/>
                     <constraint firstItem="dS1-km-N9i" firstAttribute="top" secondItem="wZx-vY-mOh" secondAttribute="bottom" constant="12" id="L1R-9t-dHK"/>
                     <constraint firstItem="aRv-qM-eiR" firstAttribute="top" secondItem="eOu-x2-Ph2" secondAttribute="bottom" constant="9" id="OHL-f8-cQK"/>
                     <constraint firstItem="eOu-x2-Ph2" firstAttribute="leading" secondItem="dS1-km-N9i" secondAttribute="leading" id="OsM-ZV-gr9"/>
@@ -904,8 +904,8 @@
                     <constraint firstItem="wZx-vY-mOh" firstAttribute="leading" secondItem="dS1-km-N9i" secondAttribute="leading" id="geo-jm-dj0"/>
                     <constraint firstItem="eOu-x2-Ph2" firstAttribute="top" secondItem="dS1-km-N9i" secondAttribute="bottom" constant="13" id="hco-4e-lS8"/>
                     <constraint firstAttribute="trailing" secondItem="eOu-x2-Ph2" secondAttribute="trailing" constant="20" id="hm7-go-Qu5"/>
-                    <constraint firstItem="Zot-Qg-M62" firstAttribute="leading" secondItem="CdD-00-Cya" secondAttribute="trailing" constant="12" id="j11-Lc-QS5"/>
-                    <constraint firstItem="H8d-AH-AWV" firstAttribute="leading" secondItem="VUV-AP-vnq" secondAttribute="trailing" constant="12" id="jfQ-4b-dGb"/>
+                    <constraint firstItem="Zot-Qg-M62" firstAttribute="leading" secondItem="CdD-00-Cya" secondAttribute="trailing" constant="149" id="j11-Lc-QS5"/>
+                    <constraint firstItem="H8d-AH-AWV" firstAttribute="leading" secondItem="VUV-AP-vnq" secondAttribute="trailing" constant="103" id="jfQ-4b-dGb"/>
                     <constraint firstItem="dS1-km-N9i" firstAttribute="trailing" secondItem="eOu-x2-Ph2" secondAttribute="trailing" id="oB3-aC-lWU"/>
                     <constraint firstItem="VUV-AP-vnq" firstAttribute="top" secondItem="eOu-x2-Ph2" secondAttribute="bottom" constant="9" id="pfI-ja-eSB"/>
                     <constraint firstItem="Zot-Qg-M62" firstAttribute="top" secondItem="372" secondAttribute="top" constant="284" id="pxX-dc-HNi"/>
@@ -913,6 +913,7 @@
                     <constraint firstAttribute="bottom" secondItem="SMp-mt-y6f" secondAttribute="bottom" constant="20" id="v7x-n3-dm2"/>
                 </constraints>
             </view>
+            <point key="canvasLocation" x="145.5" y="-957.5"/>
         </window>
         <customObject id="494" customClass="AppDelegate">
             <connections>
@@ -1184,7 +1185,7 @@
                     <constraint firstAttribute="bottom" secondItem="wLZ-Sn-YYj" secondAttribute="bottom" constant="-1" id="pmc-7S-Eev"/>
                 </constraints>
             </view>
-            <point key="canvasLocation" x="91.5" y="-384"/>
+            <point key="canvasLocation" x="91.5" y="-361"/>
         </window>
         <window title="提示框" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="qq3-sI-gkZ">
             <windowStyleMask key="styleMask" titled="YES"/>

@@ -13,7 +13,13 @@ def submitResources(locFolder, A=''): #A=A1
 			for file in os.listdir(TarOut):
 				if file[-4:] == '.tgz':
 					submitContents['TarOut'].append(os.path.join(TarOut, file))
-		elif unit[:8] == 'Reports_' and unit[-4:] == '.zip' and len(unit) < 15:
+		elif unit[:8] == 'Reports_' and ' ' not in unit and len(unit) < 15:
+			if unit[-4:] == '.zip':
+				pass
+			else:
+				os.chdir(locFolder)
+				os.popen('zip %s.zip %s/*'%(unit, unit))
+				unit = unit + '.zip'
 			submitContents['report'] = os.path.join(locFolder, unit)
 			submitContents['lang'] = unit[8:-4]
 			if A:
