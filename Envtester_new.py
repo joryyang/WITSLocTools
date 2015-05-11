@@ -192,7 +192,7 @@ def parameters(us, loc):
         elif us.count(i) != loc.count(i) and loc.count(i) > 1:
             return i + ' duplicate order'
 
-    for i in re.findall('(?<![Un])19[89][0-9]|(?<![Un])20[01][0-9]', us):
+    for i in re.findall('(?<![Un])19[89][0-9](?!\d)|(?<![Un])20[01][0-9](?!\d)', us):
         if i not in loc.replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9') and '{\\rtf1\\ansi\\' not in us:
             return 'year'
 
