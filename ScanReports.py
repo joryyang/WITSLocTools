@@ -167,6 +167,9 @@ def scanChecktarfile(file):
         if '_1.tgz' not in tar or '.01_' not in tar:
             results.append('illegal tar found: %s'%tar)
 
+    if checkLoctar.count('.tgz\n#') != checkLoctar.count('# Done.'):
+        results.append('\n## Please rerun CheckTarballs!')
+
     if len(results) == 0:
         results.append('No problem found\n')
     return results
