@@ -78,7 +78,7 @@ def returnState(LocEnv):
                 proj = buildVersion(LocEnv)
             tar = listFtpDir(proj, version, lang, dir)
             if tar:
-                state.append( '%s\tNotIntegrate: %s'%(info, tar) )
+                state.append( '%s ## Integration: %s'%(info, tar) )
             else:
                 state.append( '%s\t%s'%(info, dir) )
     return state
