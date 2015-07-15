@@ -3,17 +3,20 @@
 
 __author__= 'Tiny Liu (tinyliu@wistronits.com)'
 
-import ftplib, socket, os, sys, linecache
+import ftplib, socket, os, sys, linecache, re
 
 def listFtpDir(projName, OldLocUpdate, lang, component, server='10.4.1.13'):
+    # OldLocUpdate = OldLocUpdate.replace('*', '')
     ftp = ftplib.FTP()
     try:
         ftp.connect(server, timeout=3)
         ftp.login('tiny', '123456')
     except socket.error, e:
         print e
+        return
     except ftplib.error_perm, e:
         print e
+        return
     ToAALists = ['/OutBox/ToAppleAsia/ToAlvin', '/OutBox/ToAppleAsia/ToRachel', '/OutBox/ToAppleAsia/ToStanley', '/OutBox/ToAppleAsia/ToAlex']
     for ToAA in ToAALists:
         ftp.cwd(ToAA)
@@ -24,11 +27,11 @@ def listFtpDir(projName, OldLocUpdate, lang, component, server='10.4.1.13'):
         submitted = ftp.nlst()
         submitted.sort(key=lambda x:len(x if x[-1].isdigit() else x[:-1]))
         index = submitted.index(OldLocUpdate)+1 if OldLocUpdate in submitted else 0
-        for i in submitted[index:]:
+        for i in submitted[index:][::-1]:
             target = '%s/%s/%s'%(ToAA, projName, i)
             ftp.cwd(target)
             for tgz in ftp.nlst():
-                if component in tgz and '_%s_'%lang in tgz:
+                if '%s_%s'%(component, projName) in tgz and '_%s_'%lang in tgz:
                     return tgz
         break
 
@@ -36,16 +39,22 @@ def listFtpDir(projName, OldLocUpdate, lang, component, server='10.4.1.13'):
 
 def formatComponentDataFile(file):
     trustModel = {'0':'TRUST:OFF*', '1':'TRUST:ON', 'null':'TRUST:UNKNOWN'}
-    OldLocUpdate = 'null'; TrustLocSubmission = 'null'; Update = file[29:].split('_')[0] + file[29:].split('_')[1]
+    OldLocUpdate = ''; TrustLocSubmission = 'null'; Update = file[29:].split('_')[0] + file[29:].split('_')[1]
     
     for n in range(len(open(file).readlines())):
-        if 'OldLocUpdate' in linecache.getline(file, n):
-            OldLocUpdate = linecache.getline(file, n+1)[9:-10]
+        if not OldLocUpdate:
+            tmpStrings = linecache.getline(file, n)
+            if 'OldLocUpdate' in tmpStrings:
+                OldLocUpdate = linecache.getline(file, n+1)[9:-10]
+            elif '.tgz' in tmpStrings:
+                tgzList = re.findall('_(\S+.\d+[A-Z]\d+).\d{2}_[A-Z]{1,2}_', tmpStrings)
+                if tgzList:
+                    OldLocUpdate = tgzList[0].replace('.', '')
 
         if 'TrustLocSubmission' in linecache.getline(file, n):
             TrustLocSubmission = trustModel[linecache.getline(file, n+1)[9:-10]]
 
-    if OldLocUpdate == 'null':
+    if not OldLocUpdate:
         OldLocUpdate = '%s*'%Update
     
     return '%s\t%s\t%s\t'%(OldLocUpdate, Update, TrustLocSubmission)
@@ -78,7 +87,7 @@ def returnState(LocEnv):
                 proj = buildVersion(LocEnv)
             tar = listFtpDir(proj, version, lang, dir)
             if tar:
-                state.append( '%s ## Integration: %s'%(info, tar) )
+                state.append( '%s\t# Submitted: %s'%(info, tar) )
             else:
                 state.append( '%s\t%s'%(info, dir) )
     return state

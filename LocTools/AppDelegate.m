@@ -485,6 +485,8 @@
     return result;
 }
 
+
+
 -(void)RunCheckLocEnv
 {
     NSDictionary *warnings=[NSDictionary dictionaryWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"warning" ofType:@"plist"]];
@@ -853,6 +855,10 @@
         NSWorkspace *ws=[NSWorkspace sharedWorkspace];
         [ws selectFile:reportPath inFileViewerRootedAtPath:nil];
     }
+    else{
+        NSWorkspace *ws=[NSWorkspace sharedWorkspace];
+        [ws selectFile:projPathTemp inFileViewerRootedAtPath:nil];
+    }
 }
     
 - (IBAction)exitAlertWindow:(id)sender {
@@ -1050,7 +1056,6 @@
         NSString *removeFile=[NSString stringWithFormat:@"rm %@",target1];
         const char *command2=[removeFile UTF8String];
         system(command2);
-        /***************************************/
         NSString *str=[[NSBundle mainBundle]resourcePath];
         NSString *resourcePath=[NSString stringWithFormat:@"%@/%@",str,@"makeautoFtp_plus.pl"];
         NSString *command1=[NSString stringWithFormat:@"cp %@ %@",resourcePath,targetPath];

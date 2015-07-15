@@ -50,8 +50,12 @@ def main2(pathEnv):# Envtester_beta
     print segmentation('parameters', '')
     report.write(segmentation('parameters', '\n'))
     report1.write(segmentation('untranslated', '\n'))
-    macs = []; years = []
+    macs = []; years = []; k1 = 0; k2 = 0; k3 = 0
     for i in xliffs:
+        new, review, signoff = TransState(i)
+        k1 += new
+        k2 += review
+        k3 += signoff
         mac, year, arg, dntcontents = start(i)
         for warning in arg:
             print warning
@@ -83,12 +87,6 @@ def main2(pathEnv):# Envtester_beta
         report.write('No problem found\n\n')    
     print segmentation('xliff', '')
     report.write(segmentation('xliff', '\n'))
-    k1 = 0; k2 = 0; k3 = 0
-    for i in xliffs:
-        keywords = TransState(i, 'state="new', 'state=\'new', 'needs-review-translation', 'signed-off')
-        k1 += keywords['state="new'] + keywords['state=\'new']
-        k2 += keywords['needs-review-translation']
-        k3 += keywords['signed-off']
     print 'New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n'%(k1, k2, k3)
     report.write('New strings: %s\nNeeds-review-translation strings: %s\nSigned-off strings: %s\n\n'%(k1, k2, k3))
     

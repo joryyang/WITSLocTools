@@ -123,14 +123,13 @@ def getlangs(path):
     NewLocupdate = path[29:].split('_')[0] + path[29:].split('_')[1]
     return langs, OldLocUpdate, NewLocupdate
 
-def TransState(file, keyword, keyword1, keyword2, keyword3):
-    state = {}
+def TransState(file):
     checkfile = open(file).read()
-    state[keyword] = checkfile.count(keyword)
-    state[keyword1] = checkfile.count(keyword1)
-    state[keyword2] = checkfile.count(keyword2)
-    state[keyword3] = checkfile.count(keyword3)
-    return state
+    allState = re.findall('state=[\'"](.*?)[\'"]', checkfile)
+    new = allState.count('new')
+    review = allState.count('needs-review-translation')
+    signoff = allState.count('signed-off')
+    return new, review, signoff
 
 def checkxliffdiffer(reportfolder):
     for dir in os.listdir(reportfolder):
