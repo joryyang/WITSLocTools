@@ -33,6 +33,7 @@ def itxiblist(English):
 def itxibTool(itxib):
     os.system('/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --output-format binary1 --objects --hierarchy %s.nib > %s'%(itxib[:-6], itxib))
     print '[SUCCESS] %s ---> itxib'%itxib[itxib.find('_NewLoc'):]
+    sys.stdout.flush()
 
 def process(Resources):
     us = ''; loc = ''

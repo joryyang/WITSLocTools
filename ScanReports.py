@@ -65,6 +65,7 @@ def checkSubmission(GlotEnv):
     if not os.path.isdir(GlotEnv):
         return
     locLproj = []
+    OldLocComponent = [i for i in os.listdir('%s/_OldLoc'%GlotEnv)]
     componentList = [i for i in os.listdir('%s/_NewLoc_org'%GlotEnv) if i!='.DS_Store']
     for root, dirs, files in os.walk('%s/_OldLoc'%GlotEnv):
         for dir in dirs:
@@ -97,7 +98,7 @@ def checkSubmission(GlotEnv):
             if Submit not in submitComponent:
                 submitComponent.append(Submit)
     for c in componentList:
-        if c not in submitComponent:
+        if c not in submitComponent and c in OldLocComponent:
             Identical.append(c)
     return Identical
 

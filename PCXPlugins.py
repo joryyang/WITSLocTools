@@ -6,12 +6,15 @@ __author__= 'Tiny Liu (tinyliu@wistronits.com)'
 import os, sys
 from biplist import *
 
-pcxPlugins = {" -ib_plugin '/AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin:/AppleInternal/Library/EmbeddedFrameworks/ProApps/IBPlugIns/LunaKitEmbedded.ibplugin'": ['ProEditor','Compressor', 'CompressorKit', 'Flexo', 'iMovieX', 'MotionSharedCode', 'Motion'],
+pcxPlugins = {" -ib_plugin '/AppleInternal/Library/EmbeddedFrameworks/ProKit/EmbeddedProKit.ibplugin:/AppleInternal/Library/EmbeddedFrameworks/ProApps/IBPlugIns/LunaKitEmbedded.ibplugin'": ['ProEditor','Compressor', 'CompressorKit', 'Flexo', 'iMovieX', 'MotionSharedCode', 'Motion', 'ProChannel', 'ProCurveEditor'],
                 " -ib_plugin '/AppleInternal/Developer/Plugins/MAToolKitLogicIBPlugIn.ibplugin'":['MALogic']}
 
 def replacePCX(string, plugin=''):
     if '/BuildRoot' not in string:
-        string = string.replace('/BinaryCache', '/BuildRoot/BinaryCache')
+        if '/BinaryCache' in string:
+            string = string.replace('/BinaryCache', '/BuildRoot/BinaryCache')
+        elif '/Library' in string:
+            string = string.replace('/Library', '/BuildRoot/Library')
     if plugin not in string:
         string = string.replace('nib$/;\'', 'nib$/;\'%s'%plugin)
     return string

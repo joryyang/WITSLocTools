@@ -47,7 +47,7 @@ def formatComponentDataFile(file):
             if 'OldLocUpdate' in tmpStrings:
                 OldLocUpdate = linecache.getline(file, n+1)[9:-10]
             elif '.tgz' in tmpStrings:
-                tgzList = re.findall('_(\S+.\d+[A-Z]\d+).\d{2}_[A-Z]{1,2}_', tmpStrings)
+                tgzList = re.findall('_(\S+.\d+[A-Z]\d+[a-z]{0,1}).\d{2}_[A-Z]{1,2}_', tmpStrings)
                 if tgzList:
                     OldLocUpdate = tgzList[0].replace('.', '')
 
@@ -83,7 +83,7 @@ def returnState(LocEnv):
         if dir != '.DS_Store':
             info = formatComponentDataFile('%s/ComponentData.plist'%os.path.join('%s/GlotEnv/_ComponentData'%LocEnv, dir))
             proj, version = splitVersion(info)
-            if not proj:
+            if info.count(proj) < 2:
                 proj = buildVersion(LocEnv)
             tar = listFtpDir(proj, version, lang, dir)
             if tar:

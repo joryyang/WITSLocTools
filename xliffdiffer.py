@@ -30,7 +30,7 @@ def tester(pathEnv, plugins):
     pathNL = pathGlotEnv + '/_NewLoc'
     pathNLbackup = pathNL + '_org'
 	
-    aglangs = {'AB':'ar', 'B':'en_GB', 'BR':'pt_BR', 'CA':'ca', 'CH':'zh_CN', 'CR':'hr', 'CZ':'cs', 'D':'de', 'D_1':'German','DK':'da', 'E':'es', 'FU':'fr', 'GR':'el', 'H':'no', 'HB':'he', 'ID':'id', 'J':'ja', 'K':'fi', 'KH':'ko', 'MG':'hu', 'MY':'ms', 'MX':'es_MX', 'N':'nl', 'PL':'pl', 'PO':'pt_PT', 'RO':'ro', 'RS':'ru', 'S':'sv', 'SL':'sk', 'T':'it', 'TA':'zh_TW', 'TH':'th', 'TU':'tr', 'UA':'uk', 'VN':'vi'}
+    aglangs = {'AB':'ar', 'B':'en_GB', 'BR':'pt_BR', 'C':'fr_CA', 'CA':'ca', 'CH':'zh_CN', 'CR':'hr', 'CZ':'cs', 'D':'de', 'D_1':'German','DK':'da', 'E':'es', 'FU':'fr', 'GR':'el', 'H':'no', 'HB':'he', 'HI':'hi', 'HK':'zh_HK', 'ID':'id', 'J':'ja', 'K':'fi', 'KH':'ko', 'MG':'hu', 'MY':'ms', 'MX':'es_MX', 'N':'nl', 'PL':'pl', 'PO':'pt_PT', 'RO':'ro', 'RS':'ru', 'S':'sv', 'SL':'sk', 'T':'it', 'TA':'zh_TW', 'TH':'th', 'TU':'tr', 'UA':'uk', 'VN':'vi', 'X':'en_AU'}
 	
     def getlangs(path):
         ComponentDatas = []

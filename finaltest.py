@@ -140,7 +140,7 @@ def compareNonGlotableFiles(NL, OL, NB, OB):
     
     for key in OldFile:
         if os.path.isfile(key.replace('_OldLoc', '_NewLoc')):
-            if fileContent(key) <> fileContent(OldFile[key]) and fileContent(key.replace('_OldLoc', '_NewLoc')) == fileContent(NewFile[key.replace('_OldLoc', '_NewLoc')]):
+            if fileContent(key) != fileContent(OldFile[key]) and fileContent(key.replace('_OldLoc', '_NewLoc')) == fileContent(NewFile[key.replace('_OldLoc', '_NewLoc')]):
                 warnings.append('## Please process Non-glotable file:\n%s\n'%key.replace('_OldLoc', '_NewLoc'))
                 mark = 1
 
